@@ -1,0 +1,13 @@
+{
+  "joi": {
+    "validatorConfig": {
+      "abortEarly": false,
+      "convert": true,
+      "allowUnknown": true,
+      "skipFunctions": true,
+      "stripUnknown": false,
+      "presence": "optional",
+      "noDefaults": false
+    }
+  }
+}
