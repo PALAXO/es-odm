@@ -1,0 +1,7 @@
+{
+  "test": {
+    "settings": {
+      "timeout": 20000
+    }
+  }
+}

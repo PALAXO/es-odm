@@ -1,0 +1,25 @@
+{
+  "env": {
+    "mocha": true,
+    "node": true
+  },
+  "globals": {
+    "chai": false,
+    "expect": false,
+    "testTimeout": false
+  },
+  "plugins": [
+    "mocha"
+  ],
+  "extends": [
+    "plugin:mocha/recommended"
+  ],
+  "rules": {
+    "indent": [
+      "error",
+      4
+    ],
+    "jasmine/new-line-before-expect": 0,
+    "expr": 0
+  }
+}
