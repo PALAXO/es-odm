@@ -9,5 +9,10 @@
       "presence": "optional",
       "noDefaults": false
     }
+  },
+  "es": {
+    "url": "http://localhost:9200",
+    "maxResults": 10000,
+    "indexDelimiter": "_"
   }
 }
