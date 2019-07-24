@@ -2,11 +2,10 @@
 
 const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
-const rewire = require(`rewire`);
 
 /**
  * @param index {string}
- * @param schema {*}
+ * @param schema {Joi | void}
  * @param type {string}
  * @returns {BaseClass}
  */
@@ -15,18 +14,15 @@ function prepareClass(index, schema = Joi.any(), type = `*`) {
         throw Error(`You have to specify index.`);
     }
 
-    const constructor = rewire(`./lib/BaseModel`);
-    constructor.__set__(`_index`, index);
-    constructor.__set__(`__schema`, schema);
-    constructor.__set__(`_type`, type);
+    const myClass = require(`./lib/BaseModel`);
 
-    if (type === `*`) {
-        constructor.__set__(`__typeInIndex`, true);
-    } else {
-        constructor.__set__(`__typeInIndex`, false);
-    }
+    myClass._index = index;
+    myClass._tenant = `default`;
+    myClass.__schema = schema;
+    myClass._type = type;
+    myClass.__typeInIndex = (type === `*`);
 
-    return constructor;
+    return myClass;
 }
 
 module.exports = prepareClass;

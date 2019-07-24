@@ -28,11 +28,31 @@
      - use it when working with concrete document type
      - replaces type from `library(index, schema, type)`
        
- - How type works:
+       
+ - How types work:
    - if type is specified in `library(index, schema, type)`, is uses indexes like `<tenant>_<index>`
    - if not, it uses index `<tenant>_<index>_*`
      - only suitable for searching
    - once `.type(type)` is called, it uses indexes like `<tenant>_<index>_<type>`
+       
+       
+ - Custom functions:
+   - They can be defined in class level
+   - They have access to class static functions and defined properties 
+     - Use `this.staticFunction()`
+   - They are copied to class clones
+   ```
+    const MyClass = library(`myIndex`);
+    MyClass.showType = function () {
+        return this._type;
+    }
+    
+    const TypeClass = MyClass.type(`myType`);
+    
+    MyClass.showType;       //returns `*`
+    TypeClass.showType;     //returns `myType`
+    
+    ```
        
        
  - Expected usage:
@@ -59,18 +79,42 @@
     
 #### functions / methods
 
- - `async save(?force, ?clone)`
-   - saves instance
+
+ - `static async _fullIndex()` and `async _fullIndex()`
+   - Returns class full index, usable for ES queries
+   - It consist of tenant, index and optionally from type
+     - Exact rule is described above
+
+ - `static async _search(body, ?from, ?size, ?scroll)`
+   - TODO
+   
+ - `static async findAll()`
+   - TODO
+   
+ - `static async get(ids)`
+   - TODO
+   
+ - `static async find(ids)`
+   - TODO
+   
+ - `static async delete(ids)`
+   - TODO
+   
+ - `async save(?force)`
+   - saves or re-saves instance
    - it uses specified `_id` or generates new one if not specified
-     - it uses `index` function
+     - it uses ES `index()` function
    - `force` - disables validation
-   - `clone` 
-     - if instance has specified `_id`, it creates its copy and returns it
-     - otherwise just save, like if not set
+   
+ - `async reload()`
+   - reloads instance data from ES
+     - all user specified data are discarded
+   - `_id` must be specified and entry must exist in ES
      
  - `async validate()`
    - Validates instance
      - if OK, returns validated object (deep copy)
      - otherwise throws an error
+    
  
  - ElasticSearch instance - singleton, implemented in separated module
