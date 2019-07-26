@@ -19,7 +19,7 @@ describe(`BaseModel class`, function() {
             expect(myClass._tenant).to.equal(`default`);
             expect(myClass._type).to.equal(`*`);
 
-            expect(myClass._fullIndex).to.equal(`default_myIndex_*`);
+            expect(myClass.__fullIndex).to.equal(`default_myIndex_*`);
         });
 
         it(`creates new class with schema`, async () => {
@@ -30,7 +30,7 @@ describe(`BaseModel class`, function() {
             expect(myClass.__schema).to.equal(schema);
             expect(myClass._type).to.equal(`*`);
 
-            expect(myClass._fullIndex).to.equal(`default_myIndex_*`);
+            expect(myClass.__fullIndex).to.equal(`default_myIndex_*`);
         });
 
         it(`creates new class with schema and type`, async () => {
@@ -41,7 +41,7 @@ describe(`BaseModel class`, function() {
             expect(myClass.__schema).to.equal(schema);
             expect(myClass._type).to.equal(`myType`);
 
-            expect(myClass._fullIndex).to.equal(`default_myIndex`);
+            expect(myClass.__fullIndex).to.equal(`default_myIndex`);
         });
 
         it(`creates new class and rewrites tenant`, async () => {
@@ -52,15 +52,15 @@ describe(`BaseModel class`, function() {
             };
             originalClass.x = `:)`;
             expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
             expect(originalClass.myFunction()).to.equal(`default`);
 
             const myClass = originalClass.in(`myTenant`);
             expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
             expect(originalClass.myFunction()).to.equal(`default`);
             expect(myClass._tenant).to.equal(`myTenant`);
-            expect(myClass._fullIndex).to.equal(`myTenant_myIndex`);
+            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex`);
             expect(myClass.myFunction()).to.equal(`myTenant`);
 
             expect(myClass._index).to.equal(`myIndex`);
@@ -73,15 +73,15 @@ describe(`BaseModel class`, function() {
             const originalClass = model(`myIndex`, schema);
             expect(originalClass._tenant).to.equal(`default`);
             expect(originalClass._type).to.equal(`*`);
-            expect(originalClass._fullIndex).to.equal(`default_myIndex_*`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
             expect(originalClass._tenant).to.equal(`default`);
             expect(originalClass._type).to.equal(`*`);
-            expect(originalClass._fullIndex).to.equal(`default_myIndex_*`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
             expect(myClass._tenant).to.equal(`myTenant`);
             expect(myClass._type).to.equal(`myType`);
-            expect(myClass._fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
 
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass.__schema).to.equal(schema);
@@ -96,25 +96,326 @@ describe(`BaseModel class`, function() {
 
             expect(originalClass._tenant).to.equal(`default`);
             expect(originalClass._type).to.equal(`*`);
-            expect(originalClass._fullIndex).to.equal(`default_myIndex_*`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
             expect(originalClass.myFunction).not.to.be.undefined;
             expect(originalClass.myFunction()).to.equal(`*`);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
             expect(originalClass._tenant).to.equal(`default`);
             expect(originalClass._type).to.equal(`*`);
-            expect(originalClass._fullIndex).to.equal(`default_myIndex_*`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
             expect(originalClass.myFunction).not.to.be.undefined;
             expect(originalClass.myFunction()).to.equal(`*`);
 
             expect(myClass._tenant).to.equal(`myTenant`);
             expect(myClass._type).to.equal(`myType`);
-            expect(myClass._fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
             expect(myClass.myFunction).not.to.be.undefined;
             expect(myClass.myFunction()).to.equal(`myType`);
 
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass.__schema).to.equal(schema);
+        });
+
+        it(`preserves user redefined static function`, async () => {
+            const schema = Joi.object().keys({}).required();
+            const originalClass = model(`myIndex`, schema);
+            originalClass.find = function () {
+                return `*`;
+            };
+
+            expect(originalClass._tenant).to.equal(`default`);
+            expect(originalClass._type).to.equal(`*`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
+            expect(originalClass.find).not.to.be.undefined;
+            expect(originalClass.find()).to.equal(`*`);
+
+            const myClass = originalClass.in(`myTenant`).type(`myType`);
+            expect(originalClass._tenant).to.equal(`default`);
+            expect(originalClass._type).to.equal(`*`);
+            expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
+            expect(originalClass.find).not.to.be.undefined;
+            expect(originalClass.find()).to.equal(`*`);
+
+            expect(myClass._tenant).to.equal(`myTenant`);
+            expect(myClass._type).to.equal(`myType`);
+            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass.find).not.to.be.undefined;
+            expect(myClass.find()).to.equal(`*`);
+
+            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass.__schema).to.equal(schema);
+        });
+    });
+
+    describe(`static find()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`searches with incorrect body`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.search(void 0)).to.be.eventually.rejectedWith(`Body must be an object!`);
+        });
+
+        it(`searches with empty object`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.search({});
+
+            expect(results.length).to.equal(2);
+            const possibleValues = [userObject1.body.name, userObject2.body.name];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.name);
+            }
+        });
+
+        it(`searches with match_all`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            expect(results.length).to.equal(2);
+            const possibleValues = [userObject1.body.name, userObject2.body.name];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.name);
+            }
+        });
+
+        it(`searches for single entry`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match: {
+                        status: `:)`
+                    }
+                }
+            });
+
+            expect(results.length).to.equal(1);
+            expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0].status).to.equal(userObject1.body.status);
+            expect(results[0].name).to.equal(userObject1.body.name);
+        });
+
+        it(`searches using non existing property`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match: {
+                        unknown: `whatever`
+                    }
+                }
+            });
+
+            expect(results.length).to.equal(0);
+        });
+
+        it(`searches for all documents`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            expect(results.length).to.equal(3);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
+        it(`searches for folder documents only`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            expect(results.length).to.equal(2);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.equal(folderDocument1.type);
+                await result.save();
+            }
+        });
+    });
+
+    describe(`static findAll()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`searches for all user entries`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.findAll();
+
+            expect(results.length).to.equal(2);
+            const possibleValues = [userObject1.body.name, userObject2.body.name];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.name);
+            }
+        });
+
+        it(`searches for all documents`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`);
+            const results = await MyClass.findAll();
+
+            expect(results.length).to.equal(3);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
+        it(`searches for folder documents only`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.findAll();
+
+            expect(results.length).to.equal(2);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.equal(folderDocument1.type);
+                await result.save();
+            }
         });
     });
 
@@ -144,7 +445,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._id).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -169,7 +470,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._id).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -195,7 +496,7 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -220,7 +521,7 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -247,7 +548,7 @@ describe(`BaseModel class`, function() {
             await myInstance.save(true);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -279,7 +580,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._id).to.equal(newId);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -297,7 +598,7 @@ describe(`BaseModel class`, function() {
 
     describe(`reload()`, () => {
         it(`can't reload non-existing object without _id`, async () => {
-            const MyClass = model(`users`, Joi.string(), `user`).in(`test`);
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -309,7 +610,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`can't reload non-existing object with _id`, async () => {
-            const MyClass = model(`users`, Joi.string(), `user`).in(`test`);
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -339,7 +640,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance.fullname).to.equal(`abc def`);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -377,7 +678,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance.unknown).to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {
@@ -408,7 +709,7 @@ describe(`BaseModel class`, function() {
             myInstance.unknown = `known`;
 
             await bootstrapTest.client.index({
-                index: myInstance.constructor._fullIndex,
+                index: myInstance.constructor.__fullIndex,
                 type: myInstance.constructor._type,
                 id: id,
                 body: {
@@ -427,7 +728,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance.unknown).to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass._fullIndex,
+                index: MyClass.__fullIndex,
                 type: MyClass._type,
                 body: {
                     query: {

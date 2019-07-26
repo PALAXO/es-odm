@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "ODM",
   "keywords": [
@@ -8,6 +8,7 @@
     "odm",
     "elasticsearch"
   ],
+  "main": "./app.js",
   "license": "GLWTS",
   "scripts": {
     "start": "node app.js",
@@ -17,6 +18,7 @@
   "dependencies": {
     "@elastic/elasticsearch": "6.8.1",
     "@hapi/joi": "15.1.0",
+    "lodash": "4.17.15",
     "nconf": "0.10.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
+const BaseModel = require(`./lib/BaseModel`);
 
 /**
  * @param index {string}
@@ -10,19 +11,21 @@ const _ = require(`lodash`);
  * @returns {BaseClass}
  */
 function prepareClass(index, schema = Joi.any(), type = `*`) {
+    //TODO - configurable
+
     if (_.isNil(index) || !_.isString(index) || _.isEmpty(index)) {
         throw Error(`You have to specify index.`);
     }
 
-    const myClass = require(`./lib/BaseModel`);
+    const properties = {
+        __schema: schema,
+        __typeInIndex: (type === `*`),
 
-    myClass._index = index;
-    myClass._tenant = `default`;
-    myClass.__schema = schema;
-    myClass._type = type;
-    myClass.__typeInIndex = (type === `*`);
-
-    return myClass;
+        _tenant: `default`,
+        _index: index,
+        _type: type
+    };
+    return BaseModel(properties);
 }
 
 module.exports = prepareClass;

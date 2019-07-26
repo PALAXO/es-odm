@@ -80,16 +80,25 @@
 #### functions / methods
 
 
- - `static async _fullIndex()` and `async _fullIndex()`
+ - `static async __fullIndex()`
    - Returns class full index, usable for ES queries
    - It consist of tenant, index and optionally from type
      - Exact rule is described above
 
- - `static async _search(body, ?from, ?size, ?scroll)`
-   - TODO
+ - `static async search(body, ?from, ?size, ?scroll)`
+   - Performs ES search
+   - Returns array of instance
+     - For documents, default `*` type is replaced with real one for all returned instances
+   - Used by another static functions
+     - Redefining this function will affect their behavior
+   - User must specify `body`
+     - `tenant`, `index` and `type` are already defined in class
+   - `from` and `size` is defined in configuration, requests max range by default
+   - supports for scroll /NOT TESTED/
    
  - `static async findAll()`
-   - TODO
+   - Finds all entries in ES matching class `tenant`, `index` and `type`
+   - Uses `this.search()`
    
  - `static async get(ids)`
    - TODO
