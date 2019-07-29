@@ -12,7 +12,6 @@
   },
   "es": {
     "url": "http://localhost:9200",
-    "maxResults": 10000,
-    "indexDelimiter": "_"
+    "maxResults": 10000
   }
 }

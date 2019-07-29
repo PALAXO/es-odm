@@ -4,7 +4,7 @@ const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
 const model = require(`../../app`);
 
-//TODO - maybe prepare ES test indices, now I use Circularo...
+//It uses ES6 Circularo indices
 describe(`BaseModel class`, function() {
     this.timeout(testTimeout);
 
@@ -27,7 +27,7 @@ describe(`BaseModel class`, function() {
             const myClass = model(`myIndex`, schema);
             expect(myClass._tenant).to.equal(`default`);
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass.__schema).to.equal(schema);
+            expect(myClass.__schema).to.deep.equal(schema);
             expect(myClass._type).to.equal(`*`);
 
             expect(myClass.__fullIndex).to.equal(`default_myIndex_*`);
@@ -38,7 +38,7 @@ describe(`BaseModel class`, function() {
             const myClass = model(`myIndex`, schema, `myType`);
             expect(myClass._tenant).to.equal(`default`);
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass.__schema).to.equal(schema);
+            expect(myClass.__schema).to.deep.equal(schema);
             expect(myClass._type).to.equal(`myType`);
 
             expect(myClass.__fullIndex).to.equal(`default_myIndex`);
@@ -64,7 +64,7 @@ describe(`BaseModel class`, function() {
             expect(myClass.myFunction()).to.equal(`myTenant`);
 
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass.__schema).to.equal(schema);
+            expect(myClass.__schema).to.deep.equal(schema);
             expect(myClass._type).to.equal(`myType`);
         });
 
@@ -84,7 +84,7 @@ describe(`BaseModel class`, function() {
             expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
 
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass.__schema).to.equal(schema);
+            expect(myClass.__schema).to.deep.equal(schema);
         });
 
         it(`preserves user defined functions`, async () => {
@@ -114,7 +114,7 @@ describe(`BaseModel class`, function() {
             expect(myClass.myFunction()).to.equal(`myType`);
 
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass.__schema).to.equal(schema);
+            expect(myClass.__schema).to.deep.equal(schema);
         });
 
         it(`preserves user redefined static function`, async () => {
@@ -144,11 +144,57 @@ describe(`BaseModel class`, function() {
             expect(myClass.find()).to.equal(`*`);
 
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass.__schema).to.equal(schema);
+            expect(myClass.__schema).to.deep.equal(schema);
+        });
+
+        it(`clones class`, async () => {
+            const schema = Joi.object().keys({}).required();
+            const originalClass = model(`myIndex`, schema).type(`myType`).in(`myTenant`);
+
+            expect(originalClass._tenant).to.equal(`myTenant`);
+            expect(originalClass._index).to.equal(`myIndex`);
+            expect(originalClass._type).to.equal(`myType`);
+            expect(originalClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(originalClass.newProperty).to.be.undefined;
+            expect(originalClass.anotherProperty).to.be.undefined;
+            expect(originalClass.newFunction).to.be.undefined;
+            expect(originalClass.anotherFunction).to.be.undefined;
+
+            const changes = {
+                newProperty: `new`,
+                newFunction: function() {
+                    return `newFunction`;
+                },
+                _type: `rewrittenType`
+            };
+            const clonedClass = originalClass.clone(changes);
+            clonedClass.anotherProperty = `another`;
+            clonedClass.anotherFunction = function() {
+                return `anotherFunction`;
+            };
+            clonedClass._index = `rewrittenIndex`;
+
+            expect(originalClass._tenant).to.equal(`myTenant`);
+            expect(originalClass._index).to.equal(`myIndex`);
+            expect(originalClass._type).to.equal(`myType`);
+            expect(originalClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(originalClass.newProperty).to.be.undefined;
+            expect(originalClass.anotherProperty).to.be.undefined;
+            expect(originalClass.newFunction).to.be.undefined;
+            expect(originalClass.anotherFunction).to.be.undefined;
+
+            expect(clonedClass._tenant).to.equal(`myTenant`);
+            expect(clonedClass._index).to.equal(`rewrittenIndex`);
+            expect(clonedClass._type).to.equal(`rewrittenType`);
+            expect(clonedClass.__fullIndex).to.equal(`myTenant_rewrittenIndex_rewrittenType`);
+            expect(clonedClass.newProperty).to.equal(`new`);
+            expect(clonedClass.anotherProperty).to.equal(`another`);
+            expect(clonedClass.newFunction()).to.equal(`newFunction`);
+            expect(clonedClass.anotherFunction()).to.equal(`anotherFunction`);
         });
     });
 
-    describe(`static find()`, () => {
+    describe(`static search()`, () => {
         let userObject1;
         let userObject2;
         let folderDocument1;
@@ -377,7 +423,7 @@ describe(`BaseModel class`, function() {
             ]);
         });
 
-        it(`searches for all user entries`, async () => {
+        it(`finds all user entries`, async () => {
             const MyClass = model(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.findAll();
 
@@ -388,7 +434,7 @@ describe(`BaseModel class`, function() {
             }
         });
 
-        it(`searches for all documents`, async () => {
+        it(`finds all documents`, async () => {
             const MyClass = model(`documents`, void 0).in(`test`);
             const results = await MyClass.findAll();
 
@@ -403,7 +449,7 @@ describe(`BaseModel class`, function() {
             }
         });
 
-        it(`searches for folder documents only`, async () => {
+        it(`finds folder documents only`, async () => {
             const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.findAll();
 
@@ -416,6 +462,601 @@ describe(`BaseModel class`, function() {
                 expect(result.constructor._type).to.equal(folderDocument1.type);
                 await result.save();
             }
+        });
+    });
+
+    describe(`static get()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`can't get undefined id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.get()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't get non-string id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.get(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't get array of non-string ids`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.get([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't get without specifying type`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current type!`);
+        });
+
+        it(`can't get not-existing id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.get(`unknown`)).to.be.eventually.rejectedWith(`Response Error`);
+        });
+
+        it(`can't get array with not-existing id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.get([userObject1.id, `unknown`])).to.be.eventually.rejectedWith(`Response Error`);
+        });
+
+        it(`gets given user entry`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.get(userObject1.id);
+
+            expect(result._id).to.equal(userObject1.id);
+            expect(result.name).to.equal(userObject1.body.name);
+            expect(result.status).to.equal(userObject1.body.status);
+        });
+
+        it(`gets given user entry in array`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.get([userObject1.id]);
+
+            expect(results.length).to.equal(1);
+            expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.body.status);
+        });
+
+        it(`gets array of folder documents`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.get([folderDocument1.id, folderDocument2.id]);
+
+            expect(results.length).to.equal(2);
+            const possibleIds = [folderDocument1.id, folderDocument2.id];
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
+            for (const result of results) {
+                expect(possibleIds).to.include(result._id);
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.equal(folderDocument1.type);
+                await result.save();
+            }
+        });
+    });
+
+    describe(`static find()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`can't find undefined id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.find()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't find non-string id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.find(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't find array of non-string ids`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.find([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't find not-existing id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.find(`unknown`);
+            expect(result).to.be.null;
+        });
+
+        it(`can't find array with not-existing id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.find([`invalid`, `unknown`]);
+            expect(results).to.be.an(`array`);
+            expect(results.length).to.equal(0);
+        });
+
+        it(`finds given user entry`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.find(userObject1.id);
+
+            expect(result._id).to.equal(userObject1.id);
+            expect(result.name).to.equal(userObject1.body.name);
+            expect(result.status).to.equal(userObject1.body.status);
+        });
+
+        it(`finds given user entry in array`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.find([userObject1.id]);
+
+            expect(results.length).to.equal(1);
+            expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.body.status);
+        });
+
+        it(`finds array of folder documents`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.find([folderDocument1.id, folderDocument2.id]);
+
+            expect(results.length).to.equal(2);
+            const possibleIds = [folderDocument1.id, folderDocument2.id];
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
+            for (const result of results) {
+                expect(possibleIds).to.include(result._id);
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.equal(folderDocument1.type);
+                await result.save();
+            }
+        });
+
+        it(`finds only existing ids from array`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.find([`unknown`, folderDocument1.id, folderDocument2.id]);
+
+            expect(results.length).to.equal(2);
+            const possibleIds = [folderDocument1.id, folderDocument2.id];
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
+            for (const result of results) {
+                expect(possibleIds).to.include(result._id);
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.equal(folderDocument1.type);
+                await result.save();
+            }
+        });
+
+        it(`finds array of folder documents without specifying type`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`);
+            const results = await MyClass.find([folderDocument1.id, folderDocument2.id]);
+
+            expect(results.length).to.equal(2);
+            const possibleIds = [folderDocument1.id, folderDocument2.id];
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
+            for (const result of results) {
+                expect(possibleIds).to.include(result._id);
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.equal(folderDocument1.type);
+                await result.save();
+            }
+        });
+    });
+
+    describe(`static delete()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`can't delete undefined id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.delete()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't delete non-string id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.delete(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't delete array of non-string ids`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.delete([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't delete without specifying type`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`);
+            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current type!`);
+        });
+
+        it(`can't delete not-existing id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.delete(`unknown`);
+
+            expect(result).to.be.false;
+        });
+
+        it(`deletes given user entry`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.delete(userObject1.id);
+
+            expect(result).to.be.true;
+
+            const exists = await bootstrapTest.client.exists({
+                index: userObject1.index,
+                type: userObject1.type,
+                id: userObject1.id
+            });
+            expect(exists.body).to.be.false;
+        });
+
+        it(`deletes given user entry in array`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.delete([userObject1.id]);
+
+            expect(results.length).to.equal(1);
+            expect(results[0]).to.be.true;
+
+            const exists = await bootstrapTest.client.exists({
+                index: userObject1.index,
+                type: userObject1.type,
+                id: userObject1.id
+            });
+            expect(exists.body).to.be.false;
+        });
+
+        it(`deletes array of folder documents`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.delete([folderDocument1.id, folderDocument2.id]);
+
+            expect(results.length).to.equal(2);
+            for (const result of results) {
+                expect(result).to.be.true;
+            }
+
+            const exists1 = await bootstrapTest.client.exists({
+                index: folderDocument1.index,
+                type: folderDocument1.type,
+                id: folderDocument1.id
+            });
+            expect(exists1.body).to.be.false;
+
+            const exists2 = await bootstrapTest.client.exists({
+                index: folderDocument2.index,
+                type: folderDocument2.type,
+                id: folderDocument2.id
+            });
+            expect(exists2.body).to.be.false;
+        });
+
+        it(`deletes only existing entries from given array`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.delete([`not`, folderDocument1.id, folderDocument2.id, `existing`]);
+
+            expect(results.length).to.equal(4);
+            expect(results[0]).to.be.false;
+            expect(results[1]).to.be.true;
+            expect(results[2]).to.be.true;
+            expect(results[3]).to.be.false;
+
+            const exists1 = await bootstrapTest.client.exists({
+                index: folderDocument1.index,
+                type: folderDocument1.type,
+                id: folderDocument1.id
+            });
+            expect(exists1.body).to.be.false;
+
+            const exists2 = await bootstrapTest.client.exists({
+                index: folderDocument2.index,
+                type: folderDocument2.type,
+                id: folderDocument2.id
+            });
+            expect(exists2.body).to.be.false;
+        });
+    });
+
+    describe(`static exists()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`can't check undefined id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.exists()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't check non-string id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.exists(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't check array of non-string ids`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            await expect(MyClass.exists([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
+        });
+
+        it(`can't check without specifying type`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`);
+            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current type!`);
+        });
+
+        it(`checks not-existing id`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.exists(`unknown`);
+
+            expect(result).to.be.false;
+        });
+
+        it(`checks given user entry`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const result = await MyClass.exists(userObject1.id);
+
+            expect(result).to.be.true;
+        });
+
+        it(`checks given user entry in array`, async () => {
+            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.exists([userObject1.id]);
+
+            expect(results.length).to.equal(1);
+            expect(results[0]).to.be.true;
+        });
+
+        it(`checks array of folder documents`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.exists([folderDocument1.id, folderDocument2.id]);
+
+            expect(results.length).to.equal(2);
+            expect(results[0]).to.be.true;
+            expect(results[1]).to.be.true;
+        });
+
+        it(`checks only existing entries from given array`, async () => {
+            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const results = await MyClass.exists([`not`, folderDocument1.id, folderDocument2.id, `existing`]);
+
+            expect(results.length).to.equal(4);
+            expect(results[0]).to.be.false;
+            expect(results[1]).to.be.true;
+            expect(results[2]).to.be.true;
+            expect(results[3]).to.be.false;
         });
     });
 
