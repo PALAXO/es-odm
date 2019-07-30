@@ -24,9 +24,12 @@
    - And it uses them during ES operations
      - eq. to get correct type, index, ...
  - Whenever we need new / independent class, we must either create new one or clone existing one
+ - Library provides `BulkArray`
+   - Class inherited from `Array`
+   - Contains methods which uses ES Bulk API
      
 #### Create new class
- - To create new class, call `library(index, ?schema, ?type)`:
+ - To create new class, call `createClass(index, ?schema, ?type)`:
    - `index` - absolutely necessary, it must be specified
    - `schema` - may be undefined or Joi object, it is there because of validations
    - `type` - Serves as ES type and document type
@@ -71,11 +74,28 @@
    - `_id` is not enumerable
         
 #### How types work:
- - if type is specified in `library(index, schema, type)`, is uses indexes like `<tenant>_<index>`
+ - if type is specified in `createClass(index, schema, type)`, is uses indexes like `<tenant>_<index>`
  - if not, it uses index `<tenant>_<index>_*`
    - only suitable for searching
  - once `.type(type)` is called, it uses indexes like `<tenant>_<index>_<type>`
-       
+
+#### BulkArray
+ - For ES Bulk API, you can use `BulkArray`
+ - Class inherited from `Array`
+ - All static search functions in BaseModel class returns `BulkArray` of instances instead of `Array`
+ - Provides save / delete functions:
+   - `async save(force)`
+     - Saves all items to ES
+       - Item must have all necessary functions (`__fullIndex()`, `__esType()`, `validate()`), otherwise is skipped
+       - Not existing ids are generated and pushed to instances
+     - Returns ES response
+     
+   - `async delete()`
+     - Deletes all items from ES
+     - Instances remain intact
+     - Returns array with booleans
+       - One boolean for each item
+         - True if item deleted
        
 #### Custom functions:
  - They can be defined in class level
@@ -83,7 +103,7 @@
    - Use `this.staticFunction()`
  - They are copied to class clones
  ```
-  const MyClass = library(`myIndex`);
+  const MyClass = createClass(`myIndex`);
   MyClass.showType = function () {
       return this._type;
   }
@@ -98,12 +118,12 @@
        
 #### Usage example:
   ```
-  const library = require(`es-odm`);  //this library
+  const { createClass, BulkArray } = require(`es-odm`);
   
   const index = `users`;
   const userSchema = Joi.any(...);
   
-  const UserClass = library(index, userSchema);
+  const UserClass = createClass(index, userSchema);
   //Class is prepared, may be instantiated, tenant is `default`
   
   const MyTenantUserClass = UserClass.in(`myTenant`);
@@ -118,14 +138,23 @@
    
     
 #### Functions / Methods
+
+##### Internal
+ - `static async __es()`
+   - Returns ES singleton
+     
  - `static async __fullIndex()`
    - Returns class full index, usable for ES queries
    - It consist of tenant, index and optionally from type
      - Exact rule is described above
+     
+ - `static async __esType()`
+   - Returns ES type
 
+##### Class ES API
  - `static async search(body, ?from, ?size, ?scroll)`
    - Performs ES search
-   - Returns array of instance
+   - Returns _BulkArray_ of instance
      - For documents, default `*` type is replaced with real one for all returned instances
    - Used by another static functions
      - Redefining this function will affect their behavior
@@ -137,23 +166,25 @@
  - `static async findAll()`
    - Finds all entries in ES matching class `tenant`, `index` and `type`
    - Uses `this.search()`
+     - Returns _BulkArray_
    
  - `static async get(ids)`
    - Performs ES 'get'
    - Class must have specified `type`
      - can't be used for general document's findings
    - If 'ids' is strings, returns single instance
-   - Else if 'ids' is array of strings, returns array of instances
+   - Else if 'ids' is array of strings, returns `BulkArray` of instances
    
  - `static async find(ids)`
    - Performs ES 'search' query
    - May be used even without `type` specified
    - If 'ids' is strings, returns single instance
-   - Else if 'ids' is array of strings, returns array of instances
+   - Else if 'ids' is array of strings, returns `BulkArray` of instances
    - Uses `this.search()`
    
  - `static async delete(ids)`
    - Performs ES 'delete'
+   - Uses bulk API
    - Class must have specified `type`
    - If 'ids' is strings, returns single boolean
      - true if deleted, else otherwise
@@ -166,6 +197,7 @@
      - true if exists, else otherwise
    - Else if 'ids' is array of strings, returns array of booleans
    
+##### Instance ES API
  - `async save(?force)`
    - saves or re-saves instance
    - it uses specified `_id` or generates new one if not specified
@@ -181,7 +213,24 @@
    - Validates instance
      - if OK, returns validated object (deep copy)
      - otherwise throws an error
-    
+     
+ - `async delete()`
+   - Deletes instance from ES
+   - Instance properties remain intact
+   - Throws error if instance is not saved in ES
+     
+ - `clone(?_id)`
+   - Returns clone of current instance
+     - Deep copy
+   - Clone is created from the same class
+     - Class properties are shared (influences are possible)
+   - Original `_id` is deleted
+     - New one can be set via parameter or manually
+
+##### Class copy
+ - `static clone(?changes)`
+ - `static in(newTenant)`
+ - `static type(newType)`
  
 #### ElasticSearch instance
  - singleton, implemented in separated module

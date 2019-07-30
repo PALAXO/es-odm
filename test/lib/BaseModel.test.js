@@ -2,7 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
-const model = require(`../../app`);
+const { createClass, BulkArray } = require(`../../app`);
 
 //It uses ES6 Circularo indices
 describe(`BaseModel class`, function() {
@@ -10,11 +10,11 @@ describe(`BaseModel class`, function() {
 
     describe(`class preparations`, () => {
         it(`can't create class without index`, async () => {
-            expect(() => model()).to.throw(`You have to specify index.`);
+            expect(() => createClass()).to.throw(`You have to specify index.`);
         });
 
         it(`creates new class`, async () => {
-            const myClass = model(`myIndex`);
+            const myClass = createClass(`myIndex`);
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass._tenant).to.equal(`default`);
             expect(myClass._type).to.equal(`*`);
@@ -24,7 +24,7 @@ describe(`BaseModel class`, function() {
 
         it(`creates new class with schema`, async () => {
             const schema = Joi.object().keys({}).required();
-            const myClass = model(`myIndex`, schema);
+            const myClass = createClass(`myIndex`, schema);
             expect(myClass._tenant).to.equal(`default`);
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
@@ -35,7 +35,7 @@ describe(`BaseModel class`, function() {
 
         it(`creates new class with schema and type`, async () => {
             const schema = Joi.object().keys({}).required();
-            const myClass = model(`myIndex`, schema, `myType`);
+            const myClass = createClass(`myIndex`, schema, `myType`);
             expect(myClass._tenant).to.equal(`default`);
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
@@ -46,7 +46,7 @@ describe(`BaseModel class`, function() {
 
         it(`creates new class and rewrites tenant`, async () => {
             const schema = Joi.object().keys({}).required();
-            const originalClass = model(`myIndex`, schema, `myType`);
+            const originalClass = createClass(`myIndex`, schema, `myType`);
             originalClass.myFunction = function () {
                 return this._tenant;
             };
@@ -70,7 +70,7 @@ describe(`BaseModel class`, function() {
 
         it(`creates new class and rewrites tenant and type`, async () => {
             const schema = Joi.object().keys({}).required();
-            const originalClass = model(`myIndex`, schema);
+            const originalClass = createClass(`myIndex`, schema);
             expect(originalClass._tenant).to.equal(`default`);
             expect(originalClass._type).to.equal(`*`);
             expect(originalClass.__fullIndex).to.equal(`default_myIndex_*`);
@@ -89,7 +89,7 @@ describe(`BaseModel class`, function() {
 
         it(`preserves user defined functions`, async () => {
             const schema = Joi.object().keys({}).required();
-            const originalClass = model(`myIndex`, schema);
+            const originalClass = createClass(`myIndex`, schema);
             originalClass.myFunction = function () {
                 return this._type;
             };
@@ -119,7 +119,7 @@ describe(`BaseModel class`, function() {
 
         it(`preserves user redefined static function`, async () => {
             const schema = Joi.object().keys({}).required();
-            const originalClass = model(`myIndex`, schema);
+            const originalClass = createClass(`myIndex`, schema);
             originalClass.find = function () {
                 return `*`;
             };
@@ -149,7 +149,7 @@ describe(`BaseModel class`, function() {
 
         it(`clones class`, async () => {
             const schema = Joi.object().keys({}).required();
-            const originalClass = model(`myIndex`, schema).type(`myType`).in(`myTenant`);
+            const originalClass = createClass(`myIndex`, schema).type(`myType`).in(`myTenant`);
 
             expect(originalClass._tenant).to.equal(`myTenant`);
             expect(originalClass._index).to.equal(`myIndex`);
@@ -260,14 +260,15 @@ describe(`BaseModel class`, function() {
         });
 
         it(`searches with incorrect body`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.search(void 0)).to.be.eventually.rejectedWith(`Body must be an object!`);
         });
 
         it(`searches with empty object`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.search({});
 
+            expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(2);
             const possibleValues = [userObject1.body.name, userObject2.body.name];
             for (const result of results) {
@@ -276,7 +277,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`searches with match_all`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.search({
                 query: {
                     match_all: {}
@@ -291,7 +292,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`searches for single entry`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.search({
                 query: {
                     match: {
@@ -307,7 +308,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`searches using non existing property`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.search({
                 query: {
                     match: {
@@ -320,7 +321,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`searches for all documents`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`);
+            const MyClass = createClass(`documents`, void 0).in(`test`);
             const results = await MyClass.search({
                 query: {
                     match_all: {}
@@ -339,7 +340,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`searches for folder documents only`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.search({
                 query: {
                     match_all: {}
@@ -424,9 +425,10 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds all user entries`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.findAll();
 
+            expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(2);
             const possibleValues = [userObject1.body.name, userObject2.body.name];
             for (const result of results) {
@@ -435,7 +437,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds all documents`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`);
+            const MyClass = createClass(`documents`, void 0).in(`test`);
             const results = await MyClass.findAll();
 
             expect(results.length).to.equal(3);
@@ -450,7 +452,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds folder documents only`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.findAll();
 
             expect(results.length).to.equal(2);
@@ -531,37 +533,37 @@ describe(`BaseModel class`, function() {
         });
 
         it(`can't get undefined id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.get()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't get non-string id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.get(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't get array of non-string ids`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.get([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't get without specifying type`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`);
+            const MyClass = createClass(`documents`, void 0).in(`test`);
             await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current type!`);
         });
 
         it(`can't get not-existing id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.get(`unknown`)).to.be.eventually.rejectedWith(`Response Error`);
         });
 
         it(`can't get array with not-existing id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.get([userObject1.id, `unknown`])).to.be.eventually.rejectedWith(`Response Error`);
         });
 
         it(`gets given user entry`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.get(userObject1.id);
 
             expect(result._id).to.equal(userObject1.id);
@@ -570,9 +572,10 @@ describe(`BaseModel class`, function() {
         });
 
         it(`gets given user entry in array`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.get([userObject1.id]);
 
+            expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
             expect(results[0].name).to.equal(userObject1.body.name);
@@ -580,7 +583,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`gets array of folder documents`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.get([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -663,35 +666,35 @@ describe(`BaseModel class`, function() {
         });
 
         it(`can't find undefined id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.find()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't find non-string id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.find(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't find array of non-string ids`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.find([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't find not-existing id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.find(`unknown`);
             expect(result).to.be.null;
         });
 
         it(`can't find array with not-existing id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.find([`invalid`, `unknown`]);
             expect(results).to.be.an(`array`);
             expect(results.length).to.equal(0);
         });
 
         it(`finds given user entry`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.find(userObject1.id);
 
             expect(result._id).to.equal(userObject1.id);
@@ -700,9 +703,10 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds given user entry in array`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.find([userObject1.id]);
 
+            expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
             expect(results[0].name).to.equal(userObject1.body.name);
@@ -710,7 +714,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds array of folder documents`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.find([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -727,7 +731,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds only existing ids from array`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.find([`unknown`, folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -744,7 +748,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds array of folder documents without specifying type`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`);
+            const MyClass = createClass(`documents`, void 0).in(`test`);
             const results = await MyClass.find([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -827,34 +831,34 @@ describe(`BaseModel class`, function() {
         });
 
         it(`can't delete undefined id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.delete()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't delete non-string id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.delete(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't delete array of non-string ids`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.delete([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't delete without specifying type`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`);
+            const MyClass = createClass(`documents`, void 0).in(`test`);
             await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current type!`);
         });
 
         it(`can't delete not-existing id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.delete(`unknown`);
 
             expect(result).to.be.false;
         });
 
         it(`deletes given user entry`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.delete(userObject1.id);
 
             expect(result).to.be.true;
@@ -868,7 +872,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`deletes given user entry in array`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.delete([userObject1.id]);
 
             expect(results.length).to.equal(1);
@@ -883,7 +887,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`deletes array of folder documents`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.delete([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -907,7 +911,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`deletes only existing entries from given array`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.delete([`not`, folderDocument1.id, folderDocument2.id, `existing`]);
 
             expect(results.length).to.equal(4);
@@ -998,41 +1002,41 @@ describe(`BaseModel class`, function() {
         });
 
         it(`can't check undefined id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.exists()).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't check non-string id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.exists(5)).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't check array of non-string ids`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.exists([5, void 0, `:)`])).to.be.eventually.rejectedWith(`You must specify string ID or array of string IDs!`);
         });
 
         it(`can't check without specifying type`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`);
+            const MyClass = createClass(`documents`, void 0).in(`test`);
             await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current type!`);
         });
 
         it(`checks not-existing id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.exists(`unknown`);
 
             expect(result).to.be.false;
         });
 
         it(`checks given user entry`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.exists(userObject1.id);
 
             expect(result).to.be.true;
         });
 
         it(`checks given user entry in array`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.exists([userObject1.id]);
 
             expect(results.length).to.equal(1);
@@ -1040,7 +1044,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`checks array of folder documents`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.exists([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -1049,7 +1053,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`checks only existing entries from given array`, async () => {
-            const MyClass = model(`documents`, void 0).in(`test`).type(`folder`);
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.exists([`not`, folderDocument1.id, folderDocument2.id, `existing`]);
 
             expect(results.length).to.equal(4);
@@ -1062,7 +1066,7 @@ describe(`BaseModel class`, function() {
 
     describe(`save()`, () => {
         it(`can't save invalid data`, async () => {
-            const MyClass = model(`users`, Joi.string(), `user`).in(`test`);
+            const MyClass = createClass(`users`, Joi.string(), `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1074,7 +1078,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`saves data instance`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1101,7 +1105,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`saves another data instance`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const myInstance = new MyClass();
             myInstance.status = `:)`;
@@ -1126,7 +1130,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`saves data instance with specified id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1153,7 +1157,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`saves another data instance with specified id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const myInstance = new MyClass(void 0, `myId`);
             myInstance.status = `:)`;
@@ -1178,7 +1182,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`forces to save invalid data`, async () => {
-            const MyClass = model(`users`, Joi.string(), `user`).in(`test`);
+            const MyClass = createClass(`users`, Joi.string(), `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1205,7 +1209,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`resaves instance`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const myInstance = new MyClass();
             myInstance.status = `:)`;
@@ -1239,7 +1243,7 @@ describe(`BaseModel class`, function() {
 
     describe(`reload()`, () => {
         it(`can't reload non-existing object without _id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1251,7 +1255,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`can't reload non-existing object with _id`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1263,7 +1267,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`reloads instance`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1296,7 +1300,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`reloads instance and drops made changes`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1334,7 +1338,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`reloads instance and loads changes from ES`, async () => {
-            const MyClass = model(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -1381,6 +1385,124 @@ describe(`BaseModel class`, function() {
             expect(results.body.hits.hits[0]._source.status).to.equal(`OK`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`Alpha`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`Alpha Beta`);
+        });
+    });
+
+    describe(`delete()`, () => {
+        it(`can't delete non-existing object without _id`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            await expect(myInstance.delete()).to.be.eventually.rejectedWith(`Document has not been saved into ES yet.`);
+        });
+
+        it(`can't delete non-existing object with _id`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data, `myId`);
+            await expect(myInstance.delete()).to.be.eventually.rejectedWith(`Response Error`);
+        });
+
+        it(`deletes instance`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            await myInstance.save();
+            const id = myInstance._id;
+
+            await myInstance.delete();
+            expect(myInstance._id).to.equal(id);
+            expect(myInstance.status).to.equal(`:)`);
+            expect(myInstance.name).to.equal(`abc`);
+            expect(myInstance.fullname).to.equal(`abc def`);
+
+            const results = await bootstrapTest.client.search({
+                index: MyClass.__fullIndex,
+                type: MyClass._type,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                }
+            });
+            expect(results.body.hits.total).to.equal(0);
+        });
+    });
+
+    describe(`clone()`, () => {
+        it(`clones instance`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data, `ok`);
+            const clone = myInstance.clone();
+
+            expect(clone._id).to.be.undefined;
+            expect(clone.status).to.equal(data.status);
+            expect(clone.name).to.equal(data.name);
+            expect(clone.fullname).to.equal(data.fullname);
+
+            myInstance.status = `:(`;
+            clone.name = `xyz`;
+
+            expect(myInstance._id).to.equal(`ok`);
+            expect(myInstance.status).to.equal(`:(`);
+            expect(myInstance.name).to.equal(`abc`);
+            expect(myInstance.fullname).to.equal(`abc def`);
+
+            expect(clone._id).to.be.undefined;
+            expect(clone.status).to.equal(`:)`);
+            expect(clone.name).to.equal(`xyz`);
+            expect(clone.fullname).to.equal(`abc def`);
+        });
+
+        it(`clones instance and sets new id`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data, `ok`);
+            const clone = myInstance.clone(`ko`);
+
+            expect(clone._id).to.equal(`ko`);
+            expect(clone.status).to.equal(data.status);
+            expect(clone.name).to.equal(data.name);
+            expect(clone.fullname).to.equal(data.fullname);
+
+            myInstance.status = `:(`;
+            clone.name = `xyz`;
+
+            expect(myInstance._id).to.equal(`ok`);
+            expect(myInstance.status).to.equal(`:(`);
+            expect(myInstance.name).to.equal(`abc`);
+            expect(myInstance.fullname).to.equal(`abc def`);
+
+            expect(clone._id).to.equal(`ko`);
+            expect(clone.status).to.equal(`:)`);
+            expect(clone.name).to.equal(`xyz`);
+            expect(clone.fullname).to.equal(`abc def`);
         });
     });
 });

@@ -4,6 +4,7 @@ const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
 
 const BaseModel = require(`./lib/BaseModel`);
+const BulkArray = require(`./lib/BulkArray`);
 
 /**
  * @param index {string}
@@ -27,4 +28,4 @@ function createClass(index, schema = Joi.any(), type = `*`) {
     return BaseModel(properties);
 }
 
-module.exports = createClass;
+module.exports = { createClass, BulkArray };
