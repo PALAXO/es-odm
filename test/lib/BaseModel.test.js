@@ -2,7 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, BulkArray } = require(`../../app`);
+const { createClass, BulkArray, BaseModel } = require(`../../app`);
 
 //It uses ES6 Circularo indices
 describe(`BaseModel class`, function() {
@@ -261,7 +261,7 @@ describe(`BaseModel class`, function() {
 
         it(`searches with incorrect body`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
-            await expect(MyClass.search(void 0)).to.be.eventually.rejectedWith(`Body must be an object!`);
+            await expect(MyClass.search(void 0)).to.be.eventually.rejectedWith(`Body must be an object or _scroll_id!`);
         });
 
         it(`searches with empty object`, async () => {
@@ -303,6 +303,7 @@ describe(`BaseModel class`, function() {
 
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0]._version).not.to.be.undefined;
             expect(results[0].status).to.equal(userObject1.body.status);
             expect(results[0].name).to.equal(userObject1.body.name);
         });
@@ -565,8 +566,10 @@ describe(`BaseModel class`, function() {
         it(`gets given user entry`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.get(userObject1.id);
+            expect(result).to.be.instanceOf(BaseModel);
 
             expect(result._id).to.equal(userObject1.id);
+            expect(result._version).not.to.be.undefined;
             expect(result.name).to.equal(userObject1.body.name);
             expect(result.status).to.equal(userObject1.body.status);
         });
@@ -578,6 +581,7 @@ describe(`BaseModel class`, function() {
             expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0]._version).not.to.be.undefined;
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
@@ -591,6 +595,7 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleIds).to.include(result._id);
+                expect(result._version).not.to.be.undefined;
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
@@ -698,6 +703,7 @@ describe(`BaseModel class`, function() {
             const result = await MyClass.find(userObject1.id);
 
             expect(result._id).to.equal(userObject1.id);
+            expect(result._version).not.to.be.undefined;
             expect(result.name).to.equal(userObject1.body.name);
             expect(result.status).to.equal(userObject1.body.status);
         });
@@ -709,6 +715,7 @@ describe(`BaseModel class`, function() {
             expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0]._version).not.to.be.undefined;
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
@@ -722,6 +729,7 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleIds).to.include(result._id);
+                expect(result._version).not.to.be.undefined;
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
@@ -739,6 +747,7 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleIds).to.include(result._id);
+                expect(result._version).not.to.be.undefined;
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
@@ -756,6 +765,7 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleIds).to.include(result._id);
+                expect(result._version).not.to.be.undefined;
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
@@ -1074,6 +1084,7 @@ describe(`BaseModel class`, function() {
                 fullname: `abc def`
             };
             const myInstance = new MyClass(data);
+            expect(myInstance).to.be.instanceOf(BaseModel);
             await expect(myInstance.save()).to.be.eventually.rejectedWith(`"value" must be a string`);
         });
 
@@ -1088,6 +1099,7 @@ describe(`BaseModel class`, function() {
             const myInstance = new MyClass(data);
             await myInstance.save();
             expect(myInstance._id).not.to.be.undefined;
+            expect(myInstance._version).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1096,7 +1108,8 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
@@ -1113,6 +1126,7 @@ describe(`BaseModel class`, function() {
             myInstance.fullname = `abc def`;
             await myInstance.save();
             expect(myInstance._id).not.to.be.undefined;
+            expect(myInstance._version).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1121,7 +1135,8 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
@@ -1147,10 +1162,12 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._id).to.equal(`myId`);
+            expect(results.body.hits.hits[0]._version).not.to.be.undefined;
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
@@ -1172,10 +1189,12 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._id).to.equal(`myId`);
+            expect(results.body.hits.hits[0]._version).not.to.be.undefined;
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
@@ -1199,10 +1218,12 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._id).to.equal(`myId`);
+            expect(results.body.hits.hits[0]._version).not.to.be.undefined;
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
@@ -1218,11 +1239,15 @@ describe(`BaseModel class`, function() {
 
             await myInstance.save();
             expect(myInstance._id).not.to.be.undefined;
+            expect(myInstance._version).not.to.be.undefined;
             const newId = myInstance._id;
+            const newVersion = myInstance._version;
 
             myInstance.status = `:(`;
             await myInstance.save();
             expect(myInstance._id).to.equal(newId);
+            expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._version).to.not.equal(newVersion);
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1231,10 +1256,12 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._id).to.equal(newId);
+            expect(results.body.hits.hits[0]._version).to.equal(myInstance._version);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:(`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
@@ -1277,9 +1304,12 @@ describe(`BaseModel class`, function() {
             const myInstance = new MyClass(data);
             await myInstance.save();
             const id = myInstance._id;
+            expect(myInstance._version).not.to.be.undefined;
+            const version = myInstance._version;
 
             await myInstance.reload();
             expect(myInstance._id).to.equal(id);
+            expect(myInstance._version).to.equal(version);
             expect(myInstance.status).to.equal(`:)`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
@@ -1291,7 +1321,8 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
@@ -1310,6 +1341,8 @@ describe(`BaseModel class`, function() {
             const myInstance = new MyClass(data);
             await myInstance.save();
             const id = myInstance._id;
+            expect(myInstance._version).not.to.be.undefined;
+            const version = myInstance._version;
 
             myInstance.staus = `:(`;
             myInstance.name = `XYZ`;
@@ -1317,6 +1350,7 @@ describe(`BaseModel class`, function() {
 
             await myInstance.reload();
             expect(myInstance._id).to.equal(id);
+            expect(myInstance._version).to.equal(version);
             expect(myInstance.status).to.equal(`:)`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
@@ -1329,9 +1363,12 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
+            expect(results.body.hits.hits[0]._id).to.equal(id);
+            expect(results.body.hits.hits[0]._version).to.equal(version);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
@@ -1348,6 +1385,8 @@ describe(`BaseModel class`, function() {
             const myInstance = new MyClass(data);
             await myInstance.save();
             const id = myInstance._id;
+            expect(myInstance._version).not.to.be.undefined;
+            const version = myInstance._version;
 
             myInstance.staus = `:(`;
             myInstance.name = `XYZ`;
@@ -1367,6 +1406,8 @@ describe(`BaseModel class`, function() {
 
             await myInstance.reload();
             expect(myInstance._id).to.equal(id);
+            expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._version).to.not.equal(version);
             expect(myInstance.status).to.equal(`OK`);
             expect(myInstance.name).to.equal(`Alpha`);
             expect(myInstance.fullname).to.equal(`Alpha Beta`);
@@ -1379,9 +1420,12 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(1);
+            expect(results.body.hits.hits[0]._id).to.equal(myInstance._id);
+            expect(results.body.hits.hits[0]._version).to.equal(myInstance._version);
             expect(results.body.hits.hits[0]._source.status).to.equal(`OK`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`Alpha`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`Alpha Beta`);
@@ -1424,9 +1468,12 @@ describe(`BaseModel class`, function() {
             const myInstance = new MyClass(data);
             await myInstance.save();
             const id = myInstance._id;
+            expect(myInstance._version).not.to.be.undefined;
+            const version = myInstance._version;
 
             await myInstance.delete();
             expect(myInstance._id).to.equal(id);
+            expect(myInstance._version).to.equal(version);
             expect(myInstance.status).to.equal(`:)`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
@@ -1438,7 +1485,8 @@ describe(`BaseModel class`, function() {
                     query: {
                         match_all: {}
                     }
-                }
+                },
+                version: true
             });
             expect(results.body.hits.total).to.equal(0);
         });
@@ -1454,9 +1502,11 @@ describe(`BaseModel class`, function() {
                 fullname: `abc def`
             };
             const myInstance = new MyClass(data, `ok`);
+            await myInstance.save();
             const clone = myInstance.clone();
 
             expect(clone._id).to.be.undefined;
+            expect(clone._version).to.be.undefined;
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
@@ -1465,11 +1515,13 @@ describe(`BaseModel class`, function() {
             clone.name = `xyz`;
 
             expect(myInstance._id).to.equal(`ok`);
+            expect(myInstance._version).not.to.be.undefined;
             expect(myInstance.status).to.equal(`:(`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
 
             expect(clone._id).to.be.undefined;
+            expect(clone._version).to.be.undefined;
             expect(clone.status).to.equal(`:)`);
             expect(clone.name).to.equal(`xyz`);
             expect(clone.fullname).to.equal(`abc def`);
@@ -1484,9 +1536,11 @@ describe(`BaseModel class`, function() {
                 fullname: `abc def`
             };
             const myInstance = new MyClass(data, `ok`);
+            await myInstance.save();
             const clone = myInstance.clone(`ko`);
 
             expect(clone._id).to.equal(`ko`);
+            expect(clone._version).to.be.undefined;
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
@@ -1495,11 +1549,13 @@ describe(`BaseModel class`, function() {
             clone.name = `xyz`;
 
             expect(myInstance._id).to.equal(`ok`);
+            expect(myInstance._version).not.to.be.undefined;
             expect(myInstance.status).to.equal(`:(`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
 
             expect(clone._id).to.equal(`ko`);
+            expect(clone._version).to.be.undefined;
             expect(clone.status).to.equal(`:)`);
             expect(clone.name).to.equal(`xyz`);
             expect(clone.fullname).to.equal(`abc def`);

@@ -9,6 +9,7 @@
 ### ODM
 
 #### Basic logic
+ - `const { createClass, BulkArray, BaseModel, setClient } = require('odm');`
  - Library creates / clones classes
    - Each class may contain properties
      - `_index`, `_type`, `_tenant`, custom functions, ...
@@ -83,8 +84,8 @@
  - For ES Bulk API, you can use `BulkArray`
  - Class inherited from `Array`
  - All static search functions in BaseModel class returns `BulkArray` of instances instead of `Array`
- - Provides save / delete functions:
-   - `async save(force)`
+ - Provides save / delete / update functions:
+   - `async save(?force)`
      - Saves all items to ES
        - Item must have all necessary functions (`__fullIndex()`, `__esType()`, `validate()`), otherwise is skipped
        - Not existing ids are generated and pushed to instances
@@ -96,6 +97,9 @@
      - Returns array with booleans
        - One boolean for each item
          - True if item deleted
+         
+   - `async update(body, ?retryOnConflict)`
+     - Performs ES update on every item
        
 #### Custom functions:
  - They can be defined in class level
@@ -196,6 +200,16 @@
    - If 'ids' is strings, returns single boolean
      - true if exists, else otherwise
    - Else if 'ids' is array of strings, returns array of booleans
+   
+ - `static async update(ids, body, ?retryOnConflict)`
+   - Performs ES update using bulk API
+   - Class must have specified `type`
+   - Returns ES item / items
+ 
+ - `static async updateByQuery(body)`
+   - Performs ES 'update_by_query'
+   - Class must have specified `type`
+   - Returns plain ES response
    
 ##### Instance ES API
  - `async save(?force)`

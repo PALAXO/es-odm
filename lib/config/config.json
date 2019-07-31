@@ -12,6 +12,8 @@
   },
   "es": {
     "url": "http://localhost:9200",
-    "maxResults": 10000
+    "maxResults": 10000,
+    "scrollTimeout": "10s",
+    "retryOnConflict": 10
   }
 }
