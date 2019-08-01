@@ -2,8 +2,8 @@
   "joi": {
     "validatorConfig": {
       "abortEarly": false,
-      "convert": true,
-      "allowUnknown": true,
+      "convert": false,
+      "allowUnknown": false,
       "skipFunctions": true,
       "stripUnknown": false,
       "presence": "optional",
@@ -13,7 +13,7 @@
   "es": {
     "url": "http://localhost:9200",
     "maxResults": 10000,
-    "scrollTimeout": "10s",
+    "scrollTimeout": "5s",
     "retryOnConflict": 10
   }
 }

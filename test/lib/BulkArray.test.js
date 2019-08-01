@@ -64,15 +64,15 @@ describe(`BulkArray class`, function() {
             const data1 = {
                 status: `:)`,
                 name: `abc`,
-                fullname: `abc def`,
-                field: `myField`
+                fullname: `abc def`
             };
             const myInstance1 = new MyClass(data1, `myId1`);
 
             const data2 = {
                 status: `:)`,
                 name: `abc`,
-                fullname: `abc def`
+                fullname: `abc def`,
+                field: `myField`
             };
             const myInstance2 = new MyClass(data2, `myId2`);
 
@@ -98,7 +98,11 @@ describe(`BulkArray class`, function() {
             const myInstance2 = new MyClass(data2);
 
             const bulk = new BulkArray(myInstance1, myInstance2);
-            await bulk.save();
+            const result = await bulk.save(true);
+
+            expect(result.length).to.equal(2);
+            expect(result[0]).to.be.true;
+            expect(result[1]).to.be.true;
 
             expect(myInstance1._id).not.to.be.undefined;
             expect(myInstance1._version).not.to.be.undefined;
@@ -153,7 +157,12 @@ describe(`BulkArray class`, function() {
             const myInstance3 = new MyClass(data3, `third`);
 
             const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
-            await bulk.save();
+            const result = await bulk.save(true);
+
+            expect(result.length).to.equal(3);
+            expect(result[0]).to.be.true;
+            expect(result[1]).to.be.true;
+            expect(result[2]).to.be.true;
 
             expect(myInstance1._id).not.to.be.undefined;
             expect(myInstance1._version).not.to.be.undefined;
@@ -205,7 +214,10 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, `myId`);
 
             const bulk = new BulkArray(myInstance);
-            await bulk.save(true);
+            const result = await bulk.save(true);
+
+            expect(result.length).to.equal(1);
+            expect(result[0]).to.be.true;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -223,6 +235,33 @@ describe(`BulkArray class`, function() {
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
+        });
+
+        it(`can't save ES invalid data`, async () => {
+            const MyClass = createClass(`users`, Joi.string(), `user`).in(`test`);
+
+            const data = {
+                unknown: true
+            };
+            const myInstance = new MyClass(data, `myId`);
+
+            const bulk = new BulkArray(myInstance);
+            const result = await bulk.save(true);
+
+            expect(result.length).to.equal(1);
+            expect(result[0]).to.be.false;
+
+            const results = await bootstrapTest.client.search({
+                index: MyClass.__fullIndex,
+                type: MyClass._type,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                },
+                version: true
+            });
+            expect(results.body.hits.total).to.equal(0);
         });
     });
 
@@ -354,6 +393,149 @@ describe(`BulkArray class`, function() {
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
+        });
+    });
+
+    describe(`update()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                type: `user`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                type: `folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                type: `d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`can't update empty array`, async () => {
+            const emptyArray = new BulkArray();
+            await expect(emptyArray.update({})).to.be.eventually.rejectedWith(`Array is empty!`);
+        });
+
+        it(`can't update without body specified`, async () => {
+            const emptyArray = new BulkArray();
+            await expect(emptyArray.update(void 0)).to.be.eventually.rejectedWith(`Body must be an object!`);
+        });
+
+        it(`updates data instances`, async () => {
+            const DocumentClass = createClass(`documents`).in(`test`);
+
+            const myInstance1 = await DocumentClass.find(`1folder`);
+            const myInstance2 = await DocumentClass.find(`2folder`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            const result = await bulk.update({
+                doc: {
+                    documentTitle: `:)`
+                }
+            });
+
+            expect(result.length).to.equal(2);
+            expect(result[0]).to.be.true;
+            expect(result[1]).to.be.true;
+
+            const results1 = await bootstrapTest.client.get({
+                index: myInstance1.constructor.__fullIndex,
+                type: myInstance1.constructor._type,
+                id: myInstance1._id
+            });
+            expect(results1.body._source.documentTitle).to.equal(`:)`);
+
+            const results2 = await bootstrapTest.client.get({
+                index: myInstance2.constructor.__fullIndex,
+                type: myInstance2.constructor._type,
+                id: myInstance2._id
+            });
+            expect(results2.body._source.documentTitle).to.equal(`:)`);
+        });
+
+        it(`updates only correct instances`, async () => {
+            const UserClass = createClass(`users`, void 0, `user`).in(`test`);
+            const DocumentClass = createClass(`documents`).in(`test`);
+
+            const myInstance1 = await DocumentClass.find(`1folder`);
+            const myInstance2 = await DocumentClass.find(`2folder`);
+            const myInstance3 = await UserClass.get(`ok`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
+            const result = await bulk.update({
+                doc: {
+                    documentTitle: `:)`
+                }
+            });
+
+            expect(result.length).to.equal(3);
+            expect(result[0]).to.be.true;
+            expect(result[1]).to.be.true;
+            expect(result[2]).to.be.false;
+
+            const results1 = await bootstrapTest.client.get({
+                index: myInstance1.constructor.__fullIndex,
+                type: myInstance1.constructor._type,
+                id: myInstance1._id
+            });
+            expect(results1.body._source.documentTitle).to.equal(`:)`);
+
+            const results2 = await bootstrapTest.client.get({
+                index: myInstance2.constructor.__fullIndex,
+                type: myInstance2.constructor._type,
+                id: myInstance2._id
+            });
+            expect(results2.body._source.documentTitle).to.equal(`:)`);
         });
     });
 });

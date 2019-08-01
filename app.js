@@ -13,10 +13,14 @@ const { changeClient } = require(`./lib/ElasticSearch`);
  * @param type {string}
  * @returns {BaseClass}
  */
-function createClass(index, schema = Joi.any(), type = `*`) {
+function createClass(index, schema = Joi.object(), type = `*`) {
     /*
      * TODO
-     * test BaseModel.update, BaseModel.updateByQuery, BaseModel.search, BulkArray.update, this.setClient
+     * test this.setClient
+     * check validation output
+     * code review / refactor
+     * check packages
+     * documentation
      */
     if (_.isNil(index) || !_.isString(index) || _.isEmpty(index)) {
         throw Error(`You have to specify index.`);
@@ -37,4 +41,4 @@ function setClient(configuration) {
     changeClient(configuration);
 }
 
-module.exports = { createClass, BulkArray, BaseModel: new BaseModel(void 0, true), setClient };
+module.exports = { createClass, BulkArray, BaseModel: Object.getPrototypeOf(BaseModel()), setClient };
