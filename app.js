@@ -8,22 +8,14 @@ const BulkArray = require(`./lib/BulkArray`);
 const { changeClient } = require(`./lib/ElasticSearch`);
 
 /**
- * @param index {string}
- * @param schema {Joi | void}
- * @param type {string}
- * @returns {BaseClass}
+ * @param index     {string}
+ * @param schema    {Joi | void}
+ * @param type      {string}
+ * @returns         {BaseClass}
  */
 function createClass(index, schema = Joi.object(), type = `*`) {
-    /*
-     * TODO
-     * test this.setClient
-     * check validation output
-     * code review / refactor
-     * check packages
-     * documentation
-     */
     if (_.isNil(index) || !_.isString(index) || _.isEmpty(index)) {
-        throw Error(`You have to specify index.`);
+        throw Error(`You have to specify an index.`);
     }
 
     const properties = {

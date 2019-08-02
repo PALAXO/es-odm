@@ -10,7 +10,7 @@ describe(`BaseModel class`, function() {
 
     describe(`class preparations`, () => {
         it(`can't create class without index`, async () => {
-            expect(() => createClass()).to.throw(`You have to specify index.`);
+            expect(() => createClass()).to.throw(`You have to specify an index.`);
         });
 
         it(`creates new class`, async () => {
@@ -921,14 +921,14 @@ describe(`BaseModel class`, function() {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.delete(`unknown`);
 
-            expect(result).to.be.false;
+            expect(result.items[0].delete.status).to.equal(404);
         });
 
         it(`deletes given user entry`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.delete(userObject1.id);
 
-            expect(result).to.be.true;
+            expect(result.items[0].delete.status).to.equal(200);
 
             const exists = await bootstrapTest.client.exists({
                 index: userObject1.index,
@@ -942,8 +942,7 @@ describe(`BaseModel class`, function() {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const results = await MyClass.delete([userObject1.id]);
 
-            expect(results.length).to.equal(1);
-            expect(results[0]).to.be.true;
+            expect(results.items[0].delete.status).to.equal(200);
 
             const exists = await bootstrapTest.client.exists({
                 index: userObject1.index,
@@ -957,10 +956,8 @@ describe(`BaseModel class`, function() {
             const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.delete([folderDocument1.id, folderDocument2.id]);
 
-            expect(results.length).to.equal(2);
-            for (const result of results) {
-                expect(result).to.be.true;
-            }
+            expect(results.items[0].delete.status).to.equal(200);
+            expect(results.items[1].delete.status).to.equal(200);
 
             const exists1 = await bootstrapTest.client.exists({
                 index: folderDocument1.index,
@@ -981,11 +978,10 @@ describe(`BaseModel class`, function() {
             const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
             const results = await MyClass.delete([`not`, folderDocument1.id, folderDocument2.id, `existing`]);
 
-            expect(results.length).to.equal(4);
-            expect(results[0]).to.be.false;
-            expect(results[1]).to.be.true;
-            expect(results[2]).to.be.true;
-            expect(results[3]).to.be.false;
+            expect(results.items[0].delete.status).to.equal(404);
+            expect(results.items[1].delete.status).to.equal(200);
+            expect(results.items[2].delete.status).to.equal(200);
+            expect(results.items[3].delete.status).to.equal(404);
 
             const exists1 = await bootstrapTest.client.exists({
                 index: folderDocument1.index,
@@ -1230,9 +1226,8 @@ describe(`BaseModel class`, function() {
                 }
             });
 
-            expect(result.length).to.equal(2);
-            expect(result[0].update.status).to.equal(200);
-            expect(result[1].update.status).to.equal(200);
+            expect(result.items[0].update.status).to.equal(200);
+            expect(result.items[1].update.status).to.equal(200);
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
@@ -1258,9 +1253,8 @@ describe(`BaseModel class`, function() {
                 }
             });
 
-            expect(result.length).to.equal(2);
-            expect(result[0].update.status).to.equal(400);
-            expect(result[1].update.status).to.equal(400);
+            expect(result.items[0].update.status).to.equal(400);
+            expect(result.items[1].update.status).to.equal(400);
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
@@ -1321,7 +1315,7 @@ describe(`BaseModel class`, function() {
                     lang: `painless`
                 }
             });
-            expect(result.body.updated).to.equal(2);
+            expect(result.updated).to.equal(2);
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
@@ -1377,7 +1371,7 @@ describe(`BaseModel class`, function() {
                     match_all: {}
                 }
             });
-            expect(result.body.deleted).to.equal(2);
+            expect(result.deleted).to.equal(2);
 
             const results1 = await bootstrapTest.client.exists({
                 index: folderDocument1.index,
@@ -1397,6 +1391,19 @@ describe(`BaseModel class`, function() {
 
     describe(`save()`, () => {
         it(`can't save invalid data`, async () => {
+            const MyClass = createClass(`users`, Joi.object({ status: Joi.array() }), `user`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            expect(myInstance).to.be.instanceOf(BaseModel);
+            await expect(myInstance.save()).to.be.eventually.rejectedWith(`child "status" fails because ["status" must be an array]. "name" is not allowed. "fullname" is not allowed`);
+        });
+
+        it(`can't save another invalid data`, async () => {
             const MyClass = createClass(`users`, Joi.string(), `user`).in(`test`);
 
             const data = {

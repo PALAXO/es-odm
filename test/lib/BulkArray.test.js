@@ -41,7 +41,7 @@ describe(`BulkArray class`, function() {
             const emptyArray = new BulkArray(`:)`, `:(`);
             emptyArray.push(5);
 
-            await expect(emptyArray.save()).to.be.eventually.rejectedWith(`Incorrect item type!`);
+            await expect(emptyArray.save()).to.be.eventually.rejectedWith(`Incorrect item type at index 0!`);
         });
 
         it(`can't save invalid data`, async () => {
@@ -100,9 +100,10 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance1, myInstance2);
             const result = await bulk.save(true);
 
-            expect(result.length).to.equal(2);
-            expect(result[0]).to.be.true;
-            expect(result[1]).to.be.true;
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(2);
+            expect(result.items[0].index.result).to.equal(`created`);
+            expect(result.items[1].index.result).to.equal(`created`);
 
             expect(myInstance1._id).not.to.be.undefined;
             expect(myInstance1._version).not.to.be.undefined;
@@ -159,10 +160,11 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
             const result = await bulk.save(true);
 
-            expect(result.length).to.equal(3);
-            expect(result[0]).to.be.true;
-            expect(result[1]).to.be.true;
-            expect(result[2]).to.be.true;
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(3);
+            expect(result.items[0].index.result).to.equal(`updated`);
+            expect(result.items[1].index.result).to.equal(`created`);
+            expect(result.items[2].index.result).to.equal(`created`);
 
             expect(myInstance1._id).not.to.be.undefined;
             expect(myInstance1._version).not.to.be.undefined;
@@ -216,8 +218,9 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance);
             const result = await bulk.save(true);
 
-            expect(result.length).to.equal(1);
-            expect(result[0]).to.be.true;
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(1);
+            expect(result.items[0].index.result).to.equal(`created`);
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -248,8 +251,9 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance);
             const result = await bulk.save(true);
 
-            expect(result.length).to.equal(1);
-            expect(result[0]).to.be.false;
+            expect(result.errors).to.be.true;
+            expect(result.items.length).to.equal(1);
+            expect(result.items[0].index.status).to.equal(400);
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -346,10 +350,11 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
             const results = await bulk.delete();
 
-            expect(results.length).to.equal(3);
-            expect(results[0]).to.be.true;
-            expect(results[1]).to.be.true;
-            expect(results[2]).to.be.true;
+            expect(results.errors).to.be.false;
+            expect(results.items.length).to.equal(3);
+            expect(results.items[0].delete.result).to.equal(`deleted`);
+            expect(results.items[1].delete.result).to.equal(`deleted`);
+            expect(results.items[2].delete.result).to.equal(`deleted`);
 
             const results1 = await bootstrapTest.client.exists({
                 index: myInstance1.constructor.__fullIndex,
@@ -382,10 +387,11 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance1, myInstance2, `incorrect`);
             const results = await bulk.delete();
 
-            expect(results.length).to.equal(3);
-            expect(results[0]).to.be.true;
-            expect(results[1]).to.be.false;
-            expect(results[2]).to.be.false;
+            expect(results.errors).to.be.true;
+            expect(results.items.length).to.equal(3);
+            expect(results.items[0].delete.result).to.equal(`deleted`);
+            expect(results.items[1].delete.result).to.equal(`not_found`);
+            expect(results.items[2].delete.status).to.equal(404);
 
             const results1 = await bootstrapTest.client.exists({
                 index: myInstance1.constructor.__fullIndex,
@@ -484,9 +490,10 @@ describe(`BulkArray class`, function() {
                 }
             });
 
-            expect(result.length).to.equal(2);
-            expect(result[0]).to.be.true;
-            expect(result[1]).to.be.true;
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(2);
+            expect(result.items[0].update.result).to.equal(`updated`);
+            expect(result.items[1].update.result).to.equal(`updated`);
 
             const results1 = await bootstrapTest.client.get({
                 index: myInstance1.constructor.__fullIndex,
@@ -518,10 +525,11 @@ describe(`BulkArray class`, function() {
                 }
             });
 
-            expect(result.length).to.equal(3);
-            expect(result[0]).to.be.true;
-            expect(result[1]).to.be.true;
-            expect(result[2]).to.be.false;
+            expect(result.errors).to.be.true;
+            expect(result.items.length).to.equal(3);
+            expect(result.items[0].update.result).to.equal(`updated`);
+            expect(result.items[1].update.result).to.equal(`updated`);
+            expect(result.items[2].update.status).to.equal(400);
 
             const results1 = await bootstrapTest.client.get({
                 index: myInstance1.constructor.__fullIndex,

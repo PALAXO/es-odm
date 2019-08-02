@@ -8,10 +8,10 @@
 
 ### ODM
 
-#### Basic logic
+#### Library usage
  - `const { createClass, BulkArray, BaseModel, setClient } = require('odm');`
- - Library creates / clones classes
-   - Each class may contain properties
+ - `createClass` function creates new cloned class
+   - Each class contains properties
      - `_index`, `_type`, `_tenant`, custom functions, ...
    - Class static methods profits from those properties
      - eg. `static search()` uses them to get index and type
@@ -19,17 +19,25 @@
        - Or rewrite existing functions
          - Which may influence another functions
        - Or redefine class properties
-     - This way we can define model functions specific to each type
- - Instance has access to those properties / functions
-   - `myInstance.constructor.staticProperty`
-   - And it uses them during ES operations
-     - eq. to get correct type, index, ...
- - Whenever we need new / independent class, we must either create new one or clone existing one
- - Library provides `BulkArray`
+     - This way we can define model functions specific to each document type
+   - Instances have access to those properties / functions
+     - `myInstance.constructor.staticProperty`
+     - And they use them during ES operations
+       - eq. to set correct type, index, ...
+   - Whenever we need new / independent class, we must either create new one or clone existing one
+ - Additionally library provides `BulkArray`
    - Class inherited from `Array`
    - Contains methods which uses ES Bulk API
-     
-#### Create new class
+ - Exported `BaseModel` should be used mainly for `instanceof` checks
+   - Do not create instances from it / change its parameters
+ - `setClient` replaces ES client singleton
+   - Should be called once at application startup
+   - New client is then used even in already created classes
+
+
+#### Class usage
+
+##### Create new class
  - To create new class, call `createClass(index, ?schema, ?type)`:
    - `index` - absolutely necessary, it must be specified
    - `schema` - may be undefined or Joi object, it is there because of validations
@@ -40,8 +48,8 @@
        - When working with concrete document type, clone it using `type()`
          - `const specificTypeClass = MyClass.type('newType');`
  
-#### Clone existing class
- - Class can be cloned using:
+##### Modify / clone existing class
+ - Class can be modified / cloned using:
    - `in(tenant)`
      - Returns class clone with tenant changed to given value
    - `type(type)`
@@ -60,51 +68,53 @@
    - Changes made afterwards to cloned class are NOT transferred to original one
      - and vice versa
        
-#### Instances
- - Instances are made from prepared class
-   - Manually
-     - You prepare class and then you can call `new MyClass(?data, ?_id)`
-       - `data` is optional object whose properties are copied to instance
-       - `_id` is optional ES _id
-   - From static functions
-     - When you call functions like `findAll`, `search()`, ...
-       - Instance is made from class and correct data is loaded from ES
-       - When type is not specified (documents generic searches), then for each found entry the class is cloned
-          - Correct `_type` is set to each cloned class and instance is made from it
- - Instance contains only ES data (with `_id`) and methods to save / reload / validate
-   - `_id` is not enumerable
-        
-#### How types work:
+##### How types work:
  - if type is specified in `createClass(index, schema, type)`, is uses indexes like `<tenant>_<index>`
  - if not, it uses index `<tenant>_<index>_*`
    - only suitable for searching
  - once `.type(type)` is called, it uses indexes like `<tenant>_<index>_<type>`
 
+ 
+#### Instances
+ - Instances are made from prepared class
+   - Manually: 
+     - You prepare class and then you can call `new MyClass(?data, ?_id, ?_version)`
+       - `data` is optional object whose properties are placed to instance
+       - `_id` is optional ES _id
+       - `_version` is optional ES _version
+   - From static functions: 
+     - When you call functions like `findAll()`, `search()`, ...
+       - Instance is made from class and correct data is loaded from ES
+       - When type is not specified (documents generic searches), then for each found entry the class is cloned
+          - Correct `_type` is set to each cloned class and instance is made from it
+ - Instance contains only ES data (with `_id` and `_version`) and methods to save / reload / validate
+   - All ES properties, custom functions, ... are saved in class
+   - `_id` and `_version` are not enumerable
+
 #### BulkArray
  - For ES Bulk API, you can use `BulkArray`
  - Class inherited from `Array`
  - All static search functions in BaseModel class returns `BulkArray` of instances instead of `Array`
- - Provides save / delete / update functions:
+ - Provides bulk functions:
    - `async save(?force)`
      - Saves all items to ES
-       - Item must have all necessary functions (`__fullIndex()`, `__esType()`, `validate()`), otherwise is skipped
        - Not existing ids are generated and pushed to instances
+       - `force = true` skips validations
      - Returns ES response
      
    - `async delete()`
      - Deletes all items from ES
-     - Instances remain intact
-     - Returns array with booleans
-       - One boolean for each item
-         - True if item deleted
+     - BulkArray and its instances remain intact
+     - Returns ES response
          
    - `async update(body, ?retryOnConflict)`
      - Performs ES update on every item
+     - Returns ES response
        
 #### Custom functions:
  - They can be defined in class level
  - They have access to class static functions and defined properties 
-   - Use `this.staticFunction()`
+   - Use like `this.staticFunction()`
  - They are copied to class clones
  ```
   const MyClass = createClass(`myIndex`);
@@ -114,30 +124,45 @@
   
   const TypeClass = MyClass.type(`myType`);
   
-  MyClass.showType;       //returns `*`
-  TypeClass.showType;     //returns `myType`
+  MyClass.showType();       //returns `*`
+  TypeClass.showType();     //returns `myType`
   
   ```
        
        
-#### Usage example:
+#### Basic usage example:
   ```
-  const { createClass, BulkArray } = require(`es-odm`);
+  const { createClass, BulkArray, BaseModel, setClient } = require(`es-odm`);
   
-  const index = `users`;
-  const userSchema = Joi.any(...);
+  setClient('http://elasticsearch:9200');
   
-  const UserClass = createClass(index, userSchema);
+  const userIndex = `users`;
+  const userType = `user`;
+  const userSchema = Joi.object({ name: Joi.string(), ... });
+  
+  const UserClass = createClass(userIndex, userSchema, userType);
   //Class is prepared, may be instantiated, tenant is `default`
   
-  const MyTenantUserClass = UserClass.in(`myTenant`);
-  //Tenant is `myTenant`
-  
+  const SouthParkUserClass = UserClass.in(`SouthPark`); //Tenant is `SouthPark`
   const data = {...};
-  const userInstance = new MyTenantUserClass(data, `myId`);
-  userInstance.myProperty = 5;
-  
+  const userInstance = new SouthParkUserClass(data, `eric`);
+  userInstance.name = 'Eric Cartmanez';
   await userInstance.save();
+  
+  const ZaronUserClass = UserClass.in(`Zaron`); //Tenant is `Zaron`
+  ZaronUserClass.getRuler = function() {  //define custom function
+    return `Eric Cartman`;
+  }
+  
+  const allUsers = ZaronUserClass.findAll(); //BulkArray
+  for (const user of allUsers) {
+    user.company = 'Kingdom of Kupa Keep';
+    if (user.name === user.constructor.getRuler()) {
+      user.role = `The Grand Wizard King`;
+      user.status = `Jews can't be paladins.`;
+    } 
+  }
+  await allUsers.save(); //save using bulk
   ```
    
     
@@ -155,96 +180,107 @@
  - `static async __esType()`
    - Returns ES type
 
-##### Class ES API
- - `static async search(body, ?from, ?size, ?scroll)`
+##### Class level API
+ - `static async search(body, ?from, ?size)`
    - Performs ES search
-   - Returns _BulkArray_ of instance
+   - Returns `BulkArray` of instances
      - For documents, default `*` type is replaced with real one for all returned instances
+       - It means you can perform search with generic document class (no type specified) and returned instances have correct instance specified in parental class
    - Used by another static functions
      - Redefining this function will affect their behavior
    - User must specify `body`
      - `tenant`, `index` and `type` are already defined in class
-   - `from` and `size` is defined in configuration, requests max range by default
-   - supports scroll /NOT TESTED/
+   - `from` and `size` are optional
+     - Returns all results if not specified, no how many there are
+       - Uses scroll API
    
  - `static async findAll()`
    - Finds all entries in ES matching class `tenant`, `index` and `type`
    - Uses `this.search()`
-     - Returns _BulkArray_
+     - Returns `BulkArray`
+     
+ - `static async find(ids)`
+   - Performs ES 'search' query
+   - If 'ids' is strings, returns single instance
+   - Else if 'ids' is array of strings, returns `BulkArray` of instances
+   - Uses `this.search()`
    
  - `static async get(ids)`
    - Performs ES 'get'
    - Class must have specified `type`
-     - can't be used for general document's findings
+     - Can't be used for general document's findings
    - If 'ids' is strings, returns single instance
    - Else if 'ids' is array of strings, returns `BulkArray` of instances
-   
- - `static async find(ids)`
-   - Performs ES 'search' query
-   - May be used even without `type` specified
-   - If 'ids' is strings, returns single instance
-   - Else if 'ids' is array of strings, returns `BulkArray` of instances
-   - Uses `this.search()`
    
  - `static async delete(ids)`
    - Performs ES 'delete'
    - Uses bulk API
    - Class must have specified `type`
-   - If 'ids' is strings, returns single boolean
-     - true if deleted, else otherwise
-   - Else if 'ids' is array of strings, returns array of booleans
+   - Returns ES response
    
  - `static async exists(ids)`
    - Performs ES 'exists'
    - Class must have specified `type`
    - If 'ids' is strings, returns single boolean
-     - true if exists, else otherwise
    - Else if 'ids' is array of strings, returns array of booleans
+     - true if exists, else otherwise
    
  - `static async update(ids, body, ?retryOnConflict)`
-   - Performs ES update using bulk API
+   - Performs ES 'update'
+   - Uses bulk API
    - Class must have specified `type`
-   - Returns ES item / items
+   - Returns ES response
  
  - `static async updateByQuery(body)`
    - Performs ES 'update_by_query'
-   - Class must have specified `type`
-   - Returns plain ES response
+   - Returns ES response
+ 
+ - `static async deleteByQuery(body)`
+   - Performs ES 'delete_by_query'
+   - Returns ES response
    
-##### Instance ES API
+##### Instance level API
  - `async save(?force)`
    - saves or re-saves instance
    - it uses specified `_id` or generates new one if not specified
-     - it uses ES `index()` function
+     - it uses ES 'index' function
    - `force` - disables validation
    
  - `async reload()`
    - reloads instance data from ES
      - all user specified data are discarded
-   - `_id` must be specified and entry must exist in ES
-     
- - `async validate()`
-   - Validates instance
-     - if OK, returns validated object (deep copy)
-     - otherwise throws an error
+   - `_id` must be specified and entry must exists in ES
      
  - `async delete()`
    - Deletes instance from ES
    - Instance properties remain intact
-   - Throws error if instance is not saved in ES
+   - `_id` must be specified and entry must exists in ES
      
  - `clone(?_id)`
    - Returns clone of current instance
      - Deep copy
-   - Clone is created from the same class
+   - Clone instance is created from parental class
      - Class properties are shared (influences are possible)
-   - Original `_id` is deleted
-     - New one can be set via parameter or manually
-
+   - `_id` and `_version` properties are not cloned
+     - New `_id` can be set via parameter or manually
+     
+ - `async validate()`
+   - Validates instance using Joi
+   - Throws in case of error / incorrect data
+     
 ##### Class copy
  - `static clone(?changes)`
+   - Creates class copy
+   - `changes` is optional object with properties to set
+ 
  - `static in(newTenant)`
+   - Clones class using `clone()`
+   - Sets given tenant
+ 
  - `static type(newType)`
+   - Clones class using `clone()`
+   - Sets given type
  
 #### ElasticSearch instance
  - singleton, implemented in separated module
+ 
