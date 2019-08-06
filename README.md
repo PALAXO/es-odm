@@ -96,16 +96,18 @@
  - Class inherited from `Array`
  - All static search functions in BaseModel class returns `BulkArray` of instances instead of `Array`
  - Provides bulk functions:
-   - `async save(?force)`
+   - `async save(?force, ?useVersion)`
      - Saves all items to ES
        - Not existing ids are generated and pushed to instances
        - `force = true` skips validations
      - Returns ES response
+     - `useVersion` - Sends ES `_version`
      
-   - `async delete()`
+   - `async delete(?useVersion)`
      - Deletes all items from ES
      - BulkArray and its instances remain intact
      - Returns ES response
+     - `useVersion` - Sends ES `_version`
          
    - `async update(body, ?retryOnConflict)`
      - Performs ES update on every item
@@ -150,17 +152,23 @@
   await userInstance.save();
   
   const ZaronUserClass = UserClass.in(`Zaron`); //Tenant is `Zaron`
-  ZaronUserClass.getRuler = function() {  //define custom function
-    return `Eric Cartman`;
+  ZaronUserClass.getRuler = function() {  //define custom static function
+    return `Motortart`;
+  }
+  ZaronUserClass.prototype.isRuler = function() {  //define custom instance method
+    return (this.name === this.constructor.getRuler());
   }
   
-  const allUsers = ZaronUserClass.findAll(); //BulkArray
+  const allUsers = ZaronUserClass.findAll();    //BulkArray
+  console.log('Looking for ${ZaronUserClass.getRuler()}!');   //Use custom static function from class
   for (const user of allUsers) {
     user.company = 'Kingdom of Kupa Keep';
-    if (user.name === user.constructor.getRuler()) {
+    if (user.isRuler()) {                       //Use custom instance method
       user.role = `The Grand Wizard King`;
       user.status = `Jews can't be paladins.`;
-    } 
+    } else {
+      console.log('This is not ${user.constructor.getRuler()}!');   //Use custom static function from instance
+    }
   }
   await allUsers.save(); //save using bulk
   ```
@@ -240,11 +248,12 @@
    - Returns ES response
    
 ##### Instance level API
- - `async save(?force)`
+ - `async save(?force, ?useVersion)`
    - saves or re-saves instance
    - it uses specified `_id` or generates new one if not specified
      - it uses ES 'index' function
    - `force` - disables validation
+   - `useVersion` - Sends ES `_version`
    
  - `async reload()`
    - reloads instance data from ES
