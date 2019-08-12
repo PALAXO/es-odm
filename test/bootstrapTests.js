@@ -20,7 +20,7 @@ chai.should();
  */
 nconf.env();
 nconf.argv();
-nconf.file(`test`, path.join(__dirname, `test_config.json`));
+nconf.file(`odm_test`, path.join(__dirname, `test_config.json`));
 
 /*
  * Globals
