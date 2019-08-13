@@ -3,15 +3,20 @@
 const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
 
-const BaseModel = require(`./lib/BaseModel`);
+const { cloneClass, BaseModel } = require(`./lib/BaseModel`);
 const BulkArray = require(`./lib/BulkArray`);
 const { changeClient } = require(`./lib/ElasticSearch`);
+
+/**
+ * This is needed due to possible bug is JSDoc parser...
+ * @typedef {typeof BaseModel} BaseModelType
+ */
 
 /**
  * @param index     {string}
  * @param schema    {Joi | void}
  * @param type      {string}
- * @returns         {BaseClass}
+ * @returns         {BaseModelType}
  */
 function createClass(index, schema = Joi.object(), type = `*`) {
     if (_.isNil(index) || !_.isString(index) || _.isEmpty(index)) {
@@ -26,11 +31,13 @@ function createClass(index, schema = Joi.object(), type = `*`) {
         _index: index,
         _type: type
     };
-    return BaseModel(properties);
+
+    // Creates new class extended from {BaseModel}
+    return cloneClass(properties);
 }
 
 function setClient(configuration) {
     changeClient(configuration);
 }
 
-module.exports = { createClass, BulkArray, BaseModel: Object.getPrototypeOf(BaseModel()), setClient };
+module.exports = { createClass, BulkArray, BaseModel, setClient };
