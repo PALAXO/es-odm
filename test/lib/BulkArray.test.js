@@ -98,7 +98,7 @@ describe(`BulkArray class`, function() {
             const myInstance2 = new MyClass(data2);
 
             const bulk = new BulkArray(myInstance1, myInstance2);
-            const result = await bulk.save(true);
+            const result = await bulk.save(false, true);
 
             expect(result.errors).to.be.false;
             expect(result.items.length).to.equal(2);
@@ -158,7 +158,7 @@ describe(`BulkArray class`, function() {
             const myInstance3 = new MyClass(data3, `third`);
 
             const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
-            const result = await bulk.save(true);
+            const result = await bulk.save(false, true);
 
             expect(result.errors).to.be.false;
             expect(result.items.length).to.equal(3);
@@ -216,7 +216,7 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, `myId`);
 
             const bulk = new BulkArray(myInstance);
-            const result = await bulk.save(true);
+            const result = await bulk.save(false, true);
 
             expect(result.errors).to.be.false;
             expect(result.items.length).to.equal(1);
@@ -249,7 +249,7 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, `myId`);
 
             const bulk = new BulkArray(myInstance);
-            const result = await bulk.save(true);
+            const result = await bulk.save(false, true);
 
             expect(result.errors).to.be.true;
             expect(result.items.length).to.equal(1);
@@ -344,8 +344,8 @@ describe(`BulkArray class`, function() {
             const DocumentClass = createClass(`documents`).in(`test`);
 
             const myInstance1 = await UserClass.get(`ok`);
-            const myInstance2 = await DocumentClass.find(`1folder`);
-            const myInstance3 = await DocumentClass.find(`2folder`);
+            const myInstance2 = (await DocumentClass.find(`1folder`))[0];
+            const myInstance3 = (await DocumentClass.find(`2folder`))[0];
 
             const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
             const results = await bulk.delete();
@@ -480,8 +480,8 @@ describe(`BulkArray class`, function() {
         it(`updates data instances`, async () => {
             const DocumentClass = createClass(`documents`).in(`test`);
 
-            const myInstance1 = await DocumentClass.find(`1folder`);
-            const myInstance2 = await DocumentClass.find(`2folder`);
+            const myInstance1 = (await DocumentClass.find(`1folder`))[0];
+            const myInstance2 = (await DocumentClass.find(`2folder`))[0];
 
             const bulk = new BulkArray(myInstance1, myInstance2);
             const result = await bulk.update({
@@ -514,8 +514,8 @@ describe(`BulkArray class`, function() {
             const UserClass = createClass(`users`, void 0, `user`).in(`test`);
             const DocumentClass = createClass(`documents`).in(`test`);
 
-            const myInstance1 = await DocumentClass.find(`1folder`);
-            const myInstance2 = await DocumentClass.find(`2folder`);
+            const myInstance1 = (await DocumentClass.find(`1folder`))[0];
+            const myInstance2 = (await DocumentClass.find(`2folder`))[0];
             const myInstance3 = await UserClass.get(`ok`);
 
             const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);

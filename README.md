@@ -96,7 +96,7 @@
  - Class inherited from `Array`
  - All static search functions in BaseModel class returns `BulkArray` of instances instead of `Array`
  - Provides bulk functions:
-   - `async save(?force, ?useVersion)`
+   - `async save(?useVersion, ?force)`
      - Saves all items to ES
        - Not existing ids are generated and pushed to instances
        - `force = true` skips validations
@@ -209,8 +209,7 @@
      
  - `static async find(ids)`
    - Performs ES 'search' query
-   - If 'ids' is strings, returns single instance
-   - Else if 'ids' is array of strings, returns `BulkArray` of instances
+   - Always returns `BulkArray` of instances
    - Uses `this.search()`
    
  - `static async get(ids)`
@@ -239,6 +238,10 @@
    - Class must have specified `type`
    - Returns ES response
  
+ - `static async count()`
+   - Performs ES 'count' with currently set tenant and type
+   - Returns number
+   
  - `static async updateByQuery(body)`
    - Performs ES 'update_by_query'
    - Returns ES response
@@ -248,12 +251,12 @@
    - Returns ES response
    
 ##### Instance level API
- - `async save(?force, ?useVersion)`
+ - `async save(?useVersion, ?force)`
    - saves or re-saves instance
    - it uses specified `_id` or generates new one if not specified
      - it uses ES 'index' function
-   - `force` - disables validation
    - `useVersion` - Sends ES `_version`
+   - `force` - disables validation
    
  - `async reload()`
    - reloads instance data from ES

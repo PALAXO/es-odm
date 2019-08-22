@@ -608,7 +608,7 @@ describe(`BaseModel class`, function() {
         it(`can't find not-existing id`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.find(`unknown`);
-            expect(result).to.be.null;
+            expect(result).to.deep.equal([]);
         });
 
         it(`can't find array with not-existing id`, async () => {
@@ -622,10 +622,12 @@ describe(`BaseModel class`, function() {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             const result = await MyClass.find(userObject1.id);
 
-            expect(result._id).to.equal(userObject1.id);
-            expect(result._version).not.to.be.undefined;
-            expect(result.name).to.equal(userObject1.body.name);
-            expect(result.status).to.equal(userObject1.body.status);
+            expect(result).to.be.instanceOf(BulkArray);
+            expect(result.length).to.equal(1);
+            expect(result[0]._id).to.equal(userObject1.id);
+            expect(result[0]._version).not.to.be.undefined;
+            expect(result[0].name).to.equal(userObject1.body.name);
+            expect(result[0].status).to.equal(userObject1.body.status);
         });
 
         it(`finds given user entry in array`, async () => {
@@ -1537,7 +1539,7 @@ describe(`BaseModel class`, function() {
                 fullname: `abc def`
             };
             const myInstance = new MyClass(data, `myId`);
-            await myInstance.save(true);
+            await myInstance.save(false, true);
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
