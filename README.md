@@ -219,7 +219,7 @@
    - If 'ids' is strings, returns single instance
    - Else if 'ids' is array of strings, returns `BulkArray` of instances
    
- - `static async delete(ids)`
+ - `static async delete(ids, ?version)`
    - Performs ES 'delete'
    - Uses bulk API
    - Class must have specified `type`
@@ -232,7 +232,7 @@
    - Else if 'ids' is array of strings, returns array of booleans
      - true if exists, else otherwise
    
- - `static async update(ids, body, ?retryOnConflict)`
+ - `static async update(ids, body, ?version)`
    - Performs ES 'update'
    - Uses bulk API
    - Class must have specified `type`
