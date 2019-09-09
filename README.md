@@ -13,7 +13,7 @@
  - `createClass` function creates new cloned class
    - Each class contains properties
      - `_index`, `_type`, `_tenant`, custom functions, ...
-   - Class static methods profits from those properties
+   - Class static functions profit from those properties
      - eg. `static search()` uses them to get index and type
      - You may write your own static function, which will use those properties
        - Or rewrite existing functions
@@ -30,9 +30,10 @@
    - Contains methods which uses ES Bulk API
  - Exported `BaseModel` should be used mainly for `instanceof` checks
    - Do not create instances from it / change its parameters
+   - Will be probably removed...
  - `setClient` replaces ES client singleton
    - Should be called once at application startup
-   - New client is then used even in already created classes
+   - New client is then used - even in already created classes
 
 
 #### Class usage
@@ -43,10 +44,10 @@
    - `schema` - may be undefined or Joi object, it is there because of validations
    - `type` - Serves as ES type and document type
      - Specify it for all types, but `documents`!
-     - For `documents` do not specify it!
+     - For `documents`, `revisions` and `enums` do not specify it!
        - It will create class suitable for searching in all documents
        - When working with concrete document type, clone it using `type()`
-         - `const specificTypeClass = MyClass.type('newType');`
+         - `const SpecificTypeClass = MyClass.type('newType');`
  
 ##### Modify / clone existing class
  - Class can be modified / cloned using:
@@ -56,6 +57,7 @@
      - Returns class clone with type changed to given value
      - Use only for Circularo documents!
        - Use it when working with concrete document type
+       - Instances returned from search/find have this set correctly
    - `clone(?changes)`
      - Clones class
      - `changes` is optional object to set cloned class properties
@@ -78,18 +80,19 @@
 #### Instances
  - Instances are made from prepared class
    - Manually: 
-     - You prepare class and then you can call `new MyClass(?data, ?_id, ?_version)`
+     - You prepare class and then you can call `new MyClass(?data, ?_id, ?_version, ?_highlight)`
        - `data` is optional object whose properties are placed to instance
        - `_id` is optional ES _id
        - `_version` is optional ES _version
+       - `_highlight` is optional ES _highlight
    - From static functions: 
      - When you call functions like `findAll()`, `search()`, ...
        - Instance is made from class and correct data is loaded from ES
        - When type is not specified (documents generic searches), then for each found entry the class is cloned
           - Correct `_type` is set to each cloned class and instance is made from it
- - Instance contains only ES data (with `_id` and `_version`) and methods to save / reload / validate
+ - Instance contains only ES data (with `_id`, `_version` and `_highlight`) and methods to save / reload / validate
    - All ES properties, custom functions, ... are saved in class
-   - `_id` and `_version` are not enumerable
+   - `_id`, `_version` and `_highlight` are not enumerable
 
 #### BulkArray
  - For ES Bulk API, you can use `BulkArray`
@@ -108,12 +111,9 @@
      - BulkArray and its instances remain intact
      - Returns ES response
      - `useVersion` - Sends ES `_version`
-         
-   - `async update(body, ?retryOnConflict)`
-     - Performs ES update on every item
-     - Returns ES response
        
 #### Custom functions:
+ - ***Possible but deprecated - use inheritance instead***
  - They can be defined in class level
  - They have access to class static functions and defined properties 
    - Use like `this.staticFunction()`
@@ -133,6 +133,7 @@
        
        
 #### Basic usage example:
+ - ***Possible but deprecated - use inheritance instead***
   ```
   const { createClass, BulkArray, BaseModel, setClient } = require(`es-odm`);
   
@@ -172,20 +173,43 @@
   }
   await allUsers.save(); //save using bulk
   ```
+       
+#### Using inheritance:
+  ```
+  class Counter extends createClass(counterIndex, counterSchema, counterType) {
+    async customFunction() {
+        return 666;
+    }
+    
+    static customStatic() {
+        return new this({ a: 4 }, `myId`);
+    }
+    
+    static async search(...args) {
+        // Rewritting static function -> affects search, find and findAll
+        const results = await super.search(...args);
+        if (results.length <= 0) {
+            throw Error(`Nothing`);
+        } else {
+            return results;
+        }
+    }
+  }
+  ```
    
     
 #### Functions / Methods
 
-##### Internal
- - `static async __es()`
+##### Internal getters
+ - `static get __es()`
    - Returns ES singleton
      
- - `static async __fullIndex()`
+ - `static get __fullIndex()`
    - Returns class full index, usable for ES queries
    - It consist of tenant, index and optionally from type
      - Exact rule is described above
      
- - `static async __esType()`
+ - `static get __esType()`
    - Returns ES type
 
 ##### Class level API
@@ -199,11 +223,11 @@
    - User must specify `body`
      - `tenant`, `index` and `type` are already defined in class
    - `from` and `size` are optional
-     - Returns all results if not specified, no how many there are
+     - Returns all results if not specified, no matter how many there are
        - Uses scroll API
    
  - `static async findAll()`
-   - Finds all entries in ES matching class `tenant`, `index` and `type`
+   - Finds all entries in ES, matching class `tenant`, `index` and `type`
    - Uses `this.search()`
      - Returns `BulkArray`
      
@@ -249,24 +273,40 @@
  - `static async deleteByQuery(body)`
    - Performs ES 'delete_by_query'
    - Returns ES response
+
+##### Indices API
+ - `static async createIndex(?body)`
+   - Creates index given by current class
+   - `body` is optional settings
+   
+ - `static async indexExists()`
+   - Checks index existence
+   - Returns boolean
+   
+ - `static async deleteIndex()`
+   - Deletes index given by current class
+   
+ - `static async getMapping()`
+   - Gets mapping of index given by current class
+   
+ - `static async putMapping(mapping)`
+   - Puts mapping to index given by current class
+   
+ - `static async reindex(destinationModel)`
+   - Reindex from current BaseModel class to selected one
    
 ##### Instance level API
- - `async save(?useVersion, ?force)`
+ - `async save(?useVersion)`
    - saves or re-saves instance
    - it uses specified `_id` or generates new one if not specified
      - it uses ES 'index' function
    - `useVersion` - Sends ES `_version`
-   - `force` - disables validation
-   
- - `async reload()`
-   - reloads instance data from ES
-     - all user specified data are discarded
-   - `_id` must be specified and entry must exists in ES
      
- - `async delete()`
+ - `async delete(?useVersion)`
    - Deletes instance from ES
    - Instance properties remain intact
    - `_id` must be specified and entry must exists in ES
+   - `useVersion` - Sends ES `_version`
      
  - `clone(?_id)`
    - Returns clone of current instance
@@ -292,6 +332,7 @@
  - `static type(newType)`
    - Clones class using `clone()`
    - Sets given type
+ 
  
 #### ElasticSearch instance
  - singleton, implemented in separated module
