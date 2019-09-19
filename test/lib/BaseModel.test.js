@@ -259,6 +259,44 @@ describe(`BaseModel class`, function() {
             ]);
         });
 
+        it(`tests higher amount of data`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.__fullIndex,
+                        _type: MyClass.__esType,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                body: bulk,
+                refresh: true
+            });
+
+            let results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, 15000, 15000);
+            expect(results.length).to.equal(15000);
+
+            results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, 30000, 1);
+            expect(results.length).to.equal(1);
+        });
+
         it(`searches with incorrect body`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
             await expect(MyClass.search(void 0)).to.be.eventually.rejectedWith(`Body must be an object!`);
@@ -357,6 +395,48 @@ describe(`BaseModel class`, function() {
                 expect(result.constructor._type).to.equal(folderDocument1.type);
                 await result.save();
             }
+        });
+
+        it(`searches without source fields`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, void 0, false);
+
+            expect(results.length).to.equal(2);
+
+            expect(results[0]._id).not.to.be.undefined;
+            expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._source).to.be.undefined;
+
+            expect(results[1]._id).not.to.be.undefined;
+            expect(results[1]._version).not.to.be.undefined;
+            expect(results[1]._source).to.be.undefined;
+        });
+
+        it(`searches for specific field only`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, void 0, [`name`]);
+
+            expect(results.length).to.equal(2);
+
+            expect(results[0]._id).not.to.be.undefined;
+            expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._source).not.to.be.undefined;
+            expect(results[0]._source.name).not.to.be.undefined;
+            expect(results[0]._source.status).to.be.undefined;
+
+            expect(results[1]._id).not.to.be.undefined;
+            expect(results[1]._version).not.to.be.undefined;
+            expect(results[1]._source).not.to.be.undefined;
+            expect(results[1]._source.name).not.to.be.undefined;
+            expect(results[1]._source.status).to.be.undefined;
         });
 
         it(`searches for documents with from parameter`, async () => {
