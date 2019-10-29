@@ -1482,7 +1482,7 @@ describe(`BaseModel class`, function() {
             };
             const myInstance = new MyClass(data);
             expect(myInstance).to.be.instanceOf(BaseModel);
-            await expect(myInstance.save()).to.be.eventually.rejectedWith(`child "status" fails because ["status" must be an array]. "name" is not allowed. "fullname" is not allowed`);
+            await expect(myInstance.save()).to.be.eventually.rejectedWith(`"status" must be an array. "name" is not allowed. "fullname" is not allowed`);
         });
 
         it(`can't save another invalid data`, async () => {

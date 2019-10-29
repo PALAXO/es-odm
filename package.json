@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "ODM",
   "keywords": [
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@elastic/elasticsearch": "6.8.1",
-    "@hapi/joi": "15.1.1",
+    "@hapi/joi": "16.1.7",
     "lodash": "4.17.15",
     "nconf": "0.10.0"
   },
@@ -26,6 +26,6 @@
     "eslint": "5.16.0",
     "eslint-plugin-mocha": "5.3.0",
     "eslint-plugin-promise": "4.2.1",
-    "mocha": "6.2.0"
+    "mocha": "6.2.2"
   }
 }

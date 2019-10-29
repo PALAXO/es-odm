@@ -77,7 +77,7 @@ describe(`BulkArray class`, function() {
             const myInstance2 = new MyClass(data2, `myId2`);
 
             const bulk = new BulkArray(myInstance1, myInstance2);
-            await expect(bulk.save()).to.be.eventually.rejectedWith(`child "field" fails because ["field" is required]`);
+            await expect(bulk.save()).to.be.eventually.rejectedWith(`"field" is required. "status" is not allowed. "name" is not allowed. "fullname" is not allowed`);
         });
 
         it(`saves data instances`, async () => {
