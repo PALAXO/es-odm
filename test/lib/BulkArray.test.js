@@ -41,6 +41,7 @@ describe(`BulkArray class`, function() {
             const emptyArray = new BulkArray(`:)`, `:(`);
             emptyArray.push(5);
 
+            expect(emptyArray.info).to.deep.equal({});
             await expect(emptyArray.save()).to.be.eventually.rejectedWith(`Incorrect item type at index 0!`);
         });
 
@@ -336,6 +337,131 @@ describe(`BulkArray class`, function() {
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
+        });
+    });
+
+    describe(`functional tests`, () => {
+        it.only(`Bulk info test`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1, `first`);
+            await myInstance1.save();
+
+            const data2 = {
+                status: `:(`,
+                name: `cde`,
+                fullname: `cde xyz`
+            };
+            const myInstance2 = new MyClass(data2);
+
+            const data3 = {
+                status: `:O`,
+                name: `xyz`,
+                fullname: `xyz xxx`
+            };
+            const myInstance3 = new MyClass(data3, `third`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
+            const payload1 = bulk.payload(myInstance1);
+            payload1.pay = `load`;
+            payload1.load = `pay`;
+
+            //=====================
+            let info = bulk.info;
+            expect(info[myInstance1._id].id).to.equal(myInstance1._id);
+            expect(info[myInstance1._id].status).to.be.undefined;
+            expect(info[myInstance1._id].payload.pay).to.equal(`load`);
+            expect(info[myInstance1._id].payload.load).to.equal(`pay`);
+
+            expect(info[myInstance2._id]).to.be.undefined;
+
+            expect(info[myInstance3._id].id).to.equal(myInstance3._id);
+            expect(info[myInstance3._id].status).to.be.undefined;
+
+            //=====================
+            await bulk.save(false);
+
+            info = bulk.info;
+            expect(info[myInstance1._id].id).to.equal(myInstance1._id);
+            expect(info[myInstance1._id].status).to.equal(200);
+            expect(info[myInstance1._id].payload.pay).to.equal(`load`);
+            expect(info[myInstance1._id].payload.load).to.equal(`pay`);
+
+            expect(info[myInstance2._id].id).to.equal(myInstance2._id);
+            expect(info[myInstance2._id].status).to.equal(201);
+
+            expect(info[myInstance3._id].id).to.equal(myInstance3._id);
+            expect(info[myInstance3._id].status).to.equal(201);
+
+            //=====================
+            bulk.reject(myInstance1, 500, `Velky spatny`);
+            payload1.pay = `toWin`;
+
+            info = bulk.info;
+            expect(info[myInstance1._id].id).to.equal(myInstance1._id);
+            expect(info[myInstance1._id].status).to.equal(500);
+            expect(info[myInstance1._id].message).to.equal(`Velky spatny`);
+            expect(info[myInstance1._id].payload.pay).to.equal(`toWin`);
+            expect(info[myInstance1._id].payload.load).to.equal(`pay`);
+
+            expect(info[myInstance2._id].id).to.equal(myInstance2._id);
+            expect(info[myInstance2._id].status).to.equal(201);
+
+            expect(info[myInstance3._id].id).to.equal(myInstance3._id);
+            expect(info[myInstance3._id].status).to.equal(201);
+
+            expect(bulk.length).to.equal(3);
+            bulk.clear();
+            expect(bulk.length).to.equal(2);
+
+            //=====================
+            bulk.finish(myInstance3, 123, `Dekuji vam za odpoved`);
+            const payload3 = bulk.payload(myInstance3);
+            payload3.any = `thing`;
+
+            info = bulk.info;
+            expect(info[myInstance1._id].id).to.equal(myInstance1._id);
+            expect(info[myInstance1._id].status).to.equal(500);
+            expect(info[myInstance1._id].message).to.equal(`Velky spatny`);
+            expect(info[myInstance1._id].payload.pay).to.equal(`toWin`);
+            expect(info[myInstance1._id].payload.load).to.equal(`pay`);
+
+            expect(info[myInstance2._id].id).to.equal(myInstance2._id);
+            expect(info[myInstance2._id].status).to.equal(201);
+
+            expect(info[myInstance3._id].id).to.equal(myInstance3._id);
+            expect(info[myInstance3._id].status).to.equal(123);
+            expect(info[myInstance3._id].message).to.equal(`Dekuji vam za odpoved`);
+            expect(info[myInstance3._id].payload.any).to.equal(`thing`);
+
+            expect(bulk.length).to.equal(2);
+
+            //=====================
+            await bulk.delete();
+
+            info = bulk.info;
+            expect(info[myInstance1._id].id).to.equal(myInstance1._id);
+            expect(info[myInstance1._id].status).to.equal(500);
+            expect(info[myInstance1._id].message).to.equal(`Velky spatny`);
+            expect(info[myInstance1._id].payload.pay).to.equal(`toWin`);
+            expect(info[myInstance1._id].payload.load).to.equal(`pay`);
+
+            expect(info[myInstance2._id].id).to.equal(myInstance2._id);
+            expect(info[myInstance2._id].status).to.equal(200);
+
+            expect(info[myInstance3._id].id).to.equal(myInstance3._id);
+            expect(info[myInstance3._id].status).to.equal(123);
+            expect(info[myInstance3._id].message).to.equal(`Dekuji vam za odpoved`);
+            expect(info[myInstance3._id].payload.any).to.equal(`thing`);
+
+            expect(bulk.length).to.equal(2);
+            bulk.clear();
+            expect(bulk.length).to.equal(1);
         });
     });
 });
