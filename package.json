@@ -18,7 +18,8 @@
     "@elastic/elasticsearch": "6.8.1",
     "@hapi/joi": "16.1.7",
     "lodash": "4.17.15",
-    "nconf": "0.10.0"
+    "nconf": "0.10.0",
+    "uuid": "3.3.3"
   },
   "devDependencies": {
     "chai": "4.2.0",

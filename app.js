@@ -1,5 +1,6 @@
 'use strict';
 
+const es = require(`@elastic/elasticsearch`);
 const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
 
@@ -40,4 +41,4 @@ function setClient(configuration) {
     changeClient(configuration);
 }
 
-module.exports = { createClass, BulkArray, BaseModel, setClient };
+module.exports = { createClass, BulkArray, BaseModel, setClient, esErrors: es.errors };
