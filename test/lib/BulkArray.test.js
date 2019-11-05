@@ -32,11 +32,6 @@ describe(`BulkArray class`, function() {
     });
 
     describe(`save()`, () => {
-        it(`can't save empty array`, async () => {
-            const emptyArray = new BulkArray();
-            await expect(emptyArray.save()).to.be.eventually.rejectedWith(`Array is empty!`);
-        });
-
         it(`can't save array without BaseModel instance`, async () => {
             const emptyArray = new BulkArray(`:)`, `:(`);
             emptyArray.push(5);
@@ -271,11 +266,6 @@ describe(`BulkArray class`, function() {
             ]);
         });
 
-        it(`can't delete empty array`, async () => {
-            const emptyArray = new BulkArray();
-            await expect(emptyArray.delete()).to.be.eventually.rejectedWith(`Array is empty!`);
-        });
-
         it(`deletes data instances`, async () => {
             const UserClass = createClass(`users`, void 0, `user`).in(`test`);
             const DocumentClass = createClass(`documents`).in(`test`);
@@ -336,6 +326,137 @@ describe(`BulkArray class`, function() {
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
+        });
+    });
+
+    describe(`functional tests`, () => {
+        it(`Bulk status test`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1, `first`);
+            await myInstance1.save();
+
+            const data2 = {
+                status: `:(`,
+                name: `cde`,
+                fullname: `cde xyz`
+            };
+            const myInstance2 = new MyClass(data2);
+
+            const data3 = {
+                status: `:O`,
+                name: `xyz`,
+                fullname: `xyz xxx`
+            };
+            const myInstance3 = new MyClass(data3, `third`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
+            const payload1 = bulk.payload(myInstance1);
+            payload1.pay = `load`;
+            payload1.load = `pay`;
+
+            //=====================
+            let status = bulk.status;
+            expect(status[myInstance1.__uuid].id).to.equal(myInstance1._id);
+            expect(status[myInstance1.__uuid].status).to.be.undefined;
+            expect(status[myInstance1.__uuid].payload.pay).to.equal(`load`);
+            expect(status[myInstance1.__uuid].payload.load).to.equal(`pay`);
+
+            expect(status[myInstance2.__uuid].id).to.be.undefined;
+            expect(status[myInstance2.__uuid].status).to.be.undefined;
+
+            expect(status[myInstance3.__uuid].id).to.equal(myInstance3._id);
+            expect(status[myInstance3.__uuid].status).to.be.undefined;
+
+            //=====================
+            await bulk.save(false);
+
+            status = bulk.status;
+            expect(status[myInstance1.__uuid].id).to.equal(myInstance1._id);
+            expect(status[myInstance1.__uuid].status).to.equal(200);
+            expect(status[myInstance1.__uuid].payload.pay).to.equal(`load`);
+            expect(status[myInstance1.__uuid].payload.load).to.equal(`pay`);
+
+            expect(status[myInstance2.__uuid].id).to.equal(myInstance2._id);
+            expect(status[myInstance2.__uuid].status).to.equal(201);
+
+            expect(status[myInstance3.__uuid].id).to.equal(myInstance3._id);
+            expect(status[myInstance3.__uuid].status).to.equal(201);
+
+            //=====================
+            bulk.reject(myInstance1, 500, `Velky spatny`);
+            payload1.pay = `toWin`;
+
+            status = bulk.status;
+            expect(status[myInstance1.__uuid].id).to.equal(myInstance1._id);
+            expect(status[myInstance1.__uuid].status).to.equal(500);
+            expect(status[myInstance1.__uuid].message).to.equal(`Velky spatny`);
+            expect(status[myInstance1.__uuid].payload.pay).to.equal(`toWin`);
+            expect(status[myInstance1.__uuid].payload.load).to.equal(`pay`);
+
+            expect(status[myInstance2.__uuid].id).to.equal(myInstance2._id);
+            expect(status[myInstance2.__uuid].status).to.equal(201);
+
+            expect(status[myInstance3.__uuid].id).to.equal(myInstance3._id);
+            expect(status[myInstance3.__uuid].status).to.equal(201);
+
+            expect(bulk.length).to.equal(3);
+            bulk.clear();
+            expect(bulk.length).to.equal(2);
+
+            //=====================
+            bulk.finish(myInstance3, 123, `Dekuji vam za odpoved`);
+            const payload3 = bulk.payload(myInstance3);
+            payload3.any = `thing`;
+
+            status = bulk.status;
+            expect(status[myInstance1.__uuid].id).to.equal(myInstance1._id);
+            expect(status[myInstance1.__uuid].status).to.equal(500);
+            expect(status[myInstance1.__uuid].message).to.equal(`Velky spatny`);
+            expect(status[myInstance1.__uuid].payload.pay).to.equal(`toWin`);
+            expect(status[myInstance1.__uuid].payload.load).to.equal(`pay`);
+
+            expect(status[myInstance2.__uuid].id).to.equal(myInstance2._id);
+            expect(status[myInstance2.__uuid].status).to.equal(201);
+
+            expect(status[myInstance3.__uuid].id).to.equal(myInstance3._id);
+            expect(status[myInstance3.__uuid].status).to.equal(123);
+            expect(status[myInstance3.__uuid].message).to.equal(`Dekuji vam za odpoved`);
+            expect(status[myInstance3.__uuid].payload.any).to.equal(`thing`);
+
+            expect(bulk.length).to.equal(2);
+
+            //=====================
+            await bulk.delete();
+
+            status = bulk.status;
+            expect(status[myInstance1.__uuid].id).to.equal(myInstance1._id);
+            expect(status[myInstance1.__uuid].status).to.equal(500);
+            expect(status[myInstance1.__uuid].message).to.equal(`Velky spatny`);
+            expect(status[myInstance1.__uuid].payload.pay).to.equal(`toWin`);
+            expect(status[myInstance1.__uuid].payload.load).to.equal(`pay`);
+
+            expect(status[myInstance2.__uuid].id).to.equal(myInstance2._id);
+            expect(status[myInstance2.__uuid].status).to.equal(200);
+
+            expect(status[myInstance3.__uuid].id).to.equal(myInstance3._id);
+            expect(status[myInstance3.__uuid].status).to.equal(123);
+            expect(status[myInstance3.__uuid].message).to.equal(`Dekuji vam za odpoved`);
+            expect(status[myInstance3.__uuid].payload.any).to.equal(`thing`);
+
+            expect(bulk.length).to.equal(2);
+            bulk.clear();
+            expect(bulk.length).to.equal(1);
+
+            const esStatus = bulk.esStatus();
+            expect(esStatus.count).to.equal(3);
+            expect(esStatus.errors).to.be.true;
+            expect(esStatus.items.length).to.equal(3);
         });
     });
 });
