@@ -453,10 +453,15 @@ describe(`BulkArray class`, function() {
             bulk.clear();
             expect(bulk.length).to.equal(1);
 
-            const esStatus = bulk.esStatus();
+            let esStatus = bulk.esStatus(true);
             expect(esStatus.count).to.equal(3);
             expect(esStatus.errors).to.be.true;
             expect(esStatus.items.length).to.equal(3);
+
+            esStatus = bulk.esStatus();
+            expect(esStatus.count).to.equal(3);
+            expect(esStatus.errors).to.be.true;
+            expect(esStatus.items.length).to.equal(1);
         });
     });
 });
