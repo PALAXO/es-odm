@@ -3,7 +3,7 @@
     "validatorConfig": {
       "abortEarly": false,
       "convert": false,
-      "allowUnknown": false,
+      "allowUnknown": true,
       "skipFunctions": true,
       "stripUnknown": false,
       "presence": "optional",
