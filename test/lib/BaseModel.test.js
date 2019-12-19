@@ -1482,7 +1482,7 @@ describe(`BaseModel class`, function() {
             };
             const myInstance = new MyClass(data);
             expect(myInstance).to.be.instanceOf(BaseModel);
-            await expect(myInstance.save()).to.be.eventually.rejectedWith(`"status" must be an array. "name" is not allowed. "fullname" is not allowed`);
+            await expect(myInstance.save()).to.be.eventually.rejectedWith(`"status" must be an array`);
         });
 
         it(`can't save another invalid data`, async () => {
@@ -1722,8 +1722,8 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
             const clone = myInstance.clone();
 
-            expect(clone._id).to.be.undefined;
-            expect(clone._version).to.be.undefined;
+            expect(clone._id).to.equal(myInstance._id);
+            expect(clone._version).to.equal(myInstance._version);
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
@@ -1737,14 +1737,14 @@ describe(`BaseModel class`, function() {
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
 
-            expect(clone._id).to.be.undefined;
-            expect(clone._version).to.be.undefined;
+            expect(clone._id).to.equal(myInstance._id);
+            expect(clone._version).to.equal(myInstance._version);
             expect(clone.status).to.equal(`:)`);
             expect(clone.name).to.equal(`xyz`);
             expect(clone.fullname).to.equal(`abc def`);
         });
 
-        it(`clones instance and sets new id`, async () => {
+        it(`clones instance and discards attributes`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
 
             const data = {
@@ -1754,9 +1754,9 @@ describe(`BaseModel class`, function() {
             };
             const myInstance = new MyClass(data, `ok`);
             await myInstance.save();
-            const clone = myInstance.clone(`ko`);
+            const clone = myInstance.clone(false);
 
-            expect(clone._id).to.equal(`ko`);
+            expect(clone._id).to.be.undefined;
             expect(clone._version).to.be.undefined;
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
@@ -1771,7 +1771,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
 
-            expect(clone._id).to.equal(`ko`);
+            expect(clone._id).to.be.undefined;
             expect(clone._version).to.be.undefined;
             expect(clone.status).to.equal(`:)`);
             expect(clone.name).to.equal(`xyz`);
