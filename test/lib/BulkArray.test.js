@@ -32,13 +32,6 @@ describe(`BulkArray class`, function() {
     });
 
     describe(`save()`, () => {
-        it(`can't save array without BaseModel instance`, async () => {
-            const emptyArray = new BulkArray(`:)`, `:(`);
-            emptyArray.push(5);
-
-            await expect(emptyArray.save()).to.be.eventually.rejectedWith(`Incorrect item type at index 0!`);
-        });
-
         it(`can't save invalid data`, async () => {
             const MyClass = createClass(`users`, Joi.string(), `user`).in(`test`);
 
@@ -72,7 +65,7 @@ describe(`BulkArray class`, function() {
             const myInstance2 = new MyClass(data2, `myId2`);
 
             const bulk = new BulkArray(myInstance1, myInstance2);
-            await expect(bulk.save()).to.be.eventually.rejectedWith(`"field" is required. "status" is not allowed. "name" is not allowed. "fullname" is not allowed`);
+            await expect(bulk.save()).to.be.eventually.rejectedWith(`"field" is required`);
         });
 
         it(`saves data instances`, async () => {
@@ -314,11 +307,10 @@ describe(`BulkArray class`, function() {
             const bulk = new BulkArray(myInstance1, myInstance2, `incorrect`);
             const results = await bulk.delete();
 
-            expect(results.errors).to.be.true;
-            expect(results.items.length).to.equal(3);
+            expect(results.errors).to.be.false;
+            expect(results.items.length).to.equal(2);
             expect(results.items[0].delete.result).to.equal(`deleted`);
             expect(results.items[1].delete.result).to.equal(`not_found`);
-            expect(results.items[2].delete.status).to.equal(404);
 
             const results1 = await bootstrapTest.client.exists({
                 index: myInstance1.constructor.__fullIndex,
