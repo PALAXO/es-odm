@@ -15,6 +15,18 @@
     "plugin:mocha/recommended"
   ],
   "rules": {
+    "mocha/no-hooks-for-single-case": [
+      "off"
+    ],
+    "mocha/no-mocha-arrows": [
+      "off"
+    ],
+    "mocha/no-setup-in-describe": [
+      "off"
+    ],
+    "mocha/no-top-level-hooks": [
+      "off"
+    ],
     "indent": [
       "error",
       4

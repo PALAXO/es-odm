@@ -192,6 +192,23 @@ describe(`BulkArray class`, function() {
             expect(results3.body._source.name).to.equal(data3.name);
             expect(results3.body._source.fullname).to.equal(data3.fullname);
         });
+
+        it(`fails because of different version`, async () => {
+            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1, `first`, 666);
+
+            const bulk = new BulkArray(myInstance1);
+            const result = await bulk.save(true);
+
+            expect(result.errors).to.be.true;
+            expect(result.items[0].index.status).to.equal(409);
+        });
     });
 
     describe(`delete()`, () => {
