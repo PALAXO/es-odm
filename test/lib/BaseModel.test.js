@@ -1001,7 +1001,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't delete not-existing id`, async () => {
             const MyClass = createClass(`users`, void 0, `user`).in(`test`);
-            const result = await MyClass.delete(`unknown`);
+            const result = await MyClass.delete([`unknown`]);
 
             expect(result.items[0].delete.status).to.equal(404);
         });
@@ -1078,6 +1078,16 @@ describe(`BaseModel class`, function() {
                 id: folderDocument2.id
             });
             expect(exists2.body).to.be.false;
+        });
+
+        it(`throws error when deleting single incorrect instance`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
+            await expect(MyClass.delete(`whatever`)).to.be.eventually.rejectedWith(`not_found`);
+        });
+
+        it(`throws error when deleting single incorrect version instance`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`).type(`folder`);
+            await expect(MyClass.delete(folderDocument1.id, 999)).to.be.eventually.rejectedWith(`[folder][1folder]: version conflict, current version`);
         });
     });
 
@@ -1351,6 +1361,23 @@ describe(`BaseModel class`, function() {
                 id: folderDocument2.id
             });
             expect(results2.body._source.name).to.be.undefined;
+        });
+
+        it(`throws error when updating single incorrect instance`, async () => {
+            const DocumentClass = createClass(`documents`).in(`test`).type(`folder`);
+
+            await expect(DocumentClass.update(`1folder`, {
+                doc: {
+                    name: `:)`
+                }
+            })).to.be.eventually.rejectedWith(`mapping set to strict, dynamic introduction of [name] within [folder] is not allowed`);
+
+            const results1 = await bootstrapTest.client.get({
+                index: folderDocument1.index,
+                type: folderDocument1.type,
+                id: folderDocument1.id
+            });
+            expect(results1.body._source.name).to.be.undefined;
         });
     });
 
