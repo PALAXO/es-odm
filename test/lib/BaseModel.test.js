@@ -458,6 +458,26 @@ describe(`BaseModel class`, function() {
             }
         });
 
+        it(`searches for documents with from parameter in body`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                from: 1
+            });
+
+            expect(results.length).to.equal(2);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
         it(`searches for documents with size parameter`, async () => {
             const MyClass = createClass(`documents`, void 0).in(`test`);
             const results = await MyClass.search({
@@ -477,6 +497,26 @@ describe(`BaseModel class`, function() {
             }
         });
 
+        it(`searches for documents with size parameter in body`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                size: 1
+            });
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
         it(`searches for documents with from and size parameters`, async () => {
             const MyClass = createClass(`documents`, void 0).in(`test`);
             const results = await MyClass.search({
@@ -484,6 +524,68 @@ describe(`BaseModel class`, function() {
                     match_all: {}
                 }
             }, 1, 1);
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
+        it(`searches for documents with from and size parameters in body`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                from: 1,
+                size: 1
+            });
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
+        it(`searches for documents with from and size parameters in body and param combined`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                from: 0,
+                size: 1000
+            }, 1, 1);
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                //correct type and can save
+                expect(result.constructor._type).to.not.equal(`*`);
+                await result.save();
+            }
+        });
+
+        it(`searches for documents with from and size parameters in body and param combined again`, async () => {
+            const MyClass = createClass(`documents`, void 0).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                from: 1
+            }, void 0, 1);
 
             expect(results.length).to.equal(1);
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
