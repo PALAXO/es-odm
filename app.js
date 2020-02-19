@@ -1,12 +1,11 @@
 'use strict';
 
-const es = require(`@elastic/elasticsearch`);
 const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
 
 const { cloneClass, BaseModel } = require(`./lib/BaseModel`);
 const BulkArray = require(`./lib/BulkArray`);
-const { changeClient } = require(`./lib/ElasticSearch`);
+const { changeClient, errors } = require(`./lib/ElasticSearch`);
 
 /**
  * This is needed due to possible bug is JSDoc parser...
@@ -41,4 +40,4 @@ function setClient(configuration) {
     changeClient(configuration);
 }
 
-module.exports = { createClass, BulkArray, BaseModel, setClient, esErrors: es.errors };
+module.exports = { createClass, BulkArray, BaseModel, setClient, esErrors: errors };
