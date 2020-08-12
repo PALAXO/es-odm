@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "description": "ODM",
   "keywords": [
     "circularo",
@@ -19,18 +19,18 @@
     "lint": "eslint **/*.js"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "^6.8.7",
+    "@elastic/elasticsearch": "^6.8.8",
     "@hapi/joi": "17.1.1",
-    "lodash": "4.17.15",
+    "lodash": "4.17.19",
     "nconf": "0.10.0",
-    "uuid": "8.2.0"
+    "uuid": "8.3.0"
   },
   "devDependencies": {
     "chai": "4.2.0",
     "chai-as-promised": "7.1.1",
-    "eslint": "7.3.1",
-    "eslint-plugin-mocha": "7.0.1",
+    "eslint": "7.6.0",
+    "eslint-plugin-mocha": "8.0.0",
     "eslint-plugin-promise": "4.2.1",
-    "mocha": "7.2.0"
+    "mocha": "8.1.1"
   }
 }
