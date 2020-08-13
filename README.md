@@ -1,5 +1,7 @@
 # es-odm
 
+## DEPRECATED -> TODO
+
 ### Data type abstraction
 
  - As discussed, this has been completely discarded
@@ -12,7 +14,7 @@
  - `const { createClass, BulkArray, BaseModel, setClient } = require('odm');`
  - `createClass` function creates new cloned class
    - Each class contains properties
-     - `_index`, `_type`, `_tenant`, custom functions, ...
+     - `_index`, `_indexType`, `_tenant`, custom functions, ...
    - Class static functions profit from those properties
      - eg. `static search()` uses them to get index and type
      - You may write your own static function, which will use those properties
@@ -89,7 +91,7 @@
      - When you call functions like `findAll()`, `search()`, ...
        - Instance is made from class and correct data is loaded from ES
        - When type is not specified (documents generic searches), then for each found entry the class is cloned
-          - Correct `_type` is set to each cloned class and instance is made from it
+          - Correct `_indexType` is set to each cloned class and instance is made from it
  - Instance contains only ES data (with `_id`, `_version` and `_highlight`) and methods to save / reload / validate
    - All ES properties, custom functions, ... are saved in class
    - `_id`, `_version` and `_highlight` are not enumerable
@@ -121,7 +123,7 @@
  ```
   const MyClass = createClass(`myIndex`);
   MyClass.showType = function () {
-      return this._type;
+      return this._indexType;
   }
   
   const TypeClass = MyClass.type(`myType`);

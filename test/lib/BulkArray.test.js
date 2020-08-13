@@ -33,7 +33,7 @@ describe(`BulkArray class`, function() {
 
     describe(`save()`, () => {
         it(`can't save invalid data`, async () => {
-            const MyClass = createClass(`users`, Joi.string(), `user`).in(`test`);
+            const MyClass = createClass(`users`, Joi.string()).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -47,7 +47,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`can't save valid and invalid data`, async () => {
-            const MyClass = createClass(`users`, Joi.object().keys({ field: Joi.any().required() }), `user`).in(`test`);
+            const MyClass = createClass(`users`, Joi.object().keys({ field: Joi.any().required() })).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -69,7 +69,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves data instances`, async () => {
-            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -97,7 +97,6 @@ describe(`BulkArray class`, function() {
             expect(myInstance1._version).not.to.be.undefined;
             const results1 = await bootstrapTest.client.get({
                 index: MyClass.__fullIndex,
-                type: MyClass._type,
                 id: myInstance1._id
             });
             expect(results1.body._version).to.equal(myInstance1._version);
@@ -109,7 +108,6 @@ describe(`BulkArray class`, function() {
             expect(myInstance2._version).not.to.be.undefined;
             const results2 = await bootstrapTest.client.get({
                 index: MyClass.__fullIndex,
-                type: MyClass._type,
                 id: myInstance2._id
             });
             expect(results2.body._version).to.equal(myInstance2._version);
@@ -121,7 +119,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves data instance with some ids specified and saved`, async () => {
-            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -158,7 +156,6 @@ describe(`BulkArray class`, function() {
             expect(myInstance1._version).not.to.be.undefined;
             const results1 = await bootstrapTest.client.get({
                 index: MyClass.__fullIndex,
-                type: MyClass._type,
                 id: myInstance1._id
             });
             expect(results1.body._id).to.equal(`first`);
@@ -171,7 +168,6 @@ describe(`BulkArray class`, function() {
             expect(myInstance2._version).not.to.be.undefined;
             const results2 = await bootstrapTest.client.get({
                 index: MyClass.__fullIndex,
-                type: MyClass._type,
                 id: myInstance2._id
             });
             expect(results2.body._version).to.equal(myInstance2._version);
@@ -183,7 +179,6 @@ describe(`BulkArray class`, function() {
             expect(myInstance3._version).not.to.be.undefined;
             const results3 = await bootstrapTest.client.get({
                 index: MyClass.__fullIndex,
-                type: MyClass._type,
                 id: myInstance3._id
             });
             expect(results3.body._id).to.equal(`third`);
@@ -194,7 +189,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`fails because of different version`, async () => {
-            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -277,8 +272,8 @@ describe(`BulkArray class`, function() {
         });
 
         it(`deletes data instances`, async () => {
-            const UserClass = createClass(`users`, void 0, `user`).in(`test`);
-            const DocumentClass = createClass(`documents`).in(`test`);
+            const UserClass = createClass(`users`, void 0).in(`test`);
+            const DocumentClass = createClass(`documents`, void 0, `*`).in(`test`);
 
             const myInstance1 = await UserClass.get(`ok`);
             const myInstance2 = (await DocumentClass.find(`1folder`))[0];
@@ -295,28 +290,25 @@ describe(`BulkArray class`, function() {
 
             const results1 = await bootstrapTest.client.exists({
                 index: myInstance1.constructor.__fullIndex,
-                type: myInstance1.constructor._type,
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
 
             const results2 = await bootstrapTest.client.exists({
                 index: myInstance2.constructor.__fullIndex,
-                type: myInstance2.constructor._type,
                 id: myInstance2._id
             });
             expect(results2.body).to.be.false;
 
             const results3 = await bootstrapTest.client.exists({
                 index: myInstance3.constructor.__fullIndex,
-                type: myInstance3.constructor._type,
                 id: myInstance3._id
             });
             expect(results3.body).to.be.false;
         });
 
         it(`deletes only correct and saved data instances`, async () => {
-            const UserClass = createClass(`users`, void 0, `user`).in(`test`);
+            const UserClass = createClass(`users`, void 0).in(`test`);
 
             const myInstance1 = await UserClass.get(`ok`);
             const myInstance2 = new UserClass({}, `invalid`);
@@ -331,7 +323,6 @@ describe(`BulkArray class`, function() {
 
             const results1 = await bootstrapTest.client.exists({
                 index: myInstance1.constructor.__fullIndex,
-                type: myInstance1.constructor._type,
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
@@ -340,7 +331,7 @@ describe(`BulkArray class`, function() {
 
     describe(`functional tests`, () => {
         it(`Bulk status test`, async () => {
-            const MyClass = createClass(`users`, void 0, `user`).in(`test`);
+            const MyClass = createClass(`users`, void 0).in(`test`);
 
             const data1 = {
                 status: `:)`,
