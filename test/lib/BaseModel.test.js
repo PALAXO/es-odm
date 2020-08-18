@@ -960,7 +960,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't get without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current index type!`);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current index type '*', full index 'test_documents_*'!`);
         });
 
         it(`can't get not-existing id`, async () => {
@@ -1184,11 +1184,6 @@ describe(`BaseModel class`, function() {
         it(`throws error when deleting single incorrect instance`, async () => {
             const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
             await expect(MyClass.delete(`whatever`)).to.be.eventually.rejectedWith(`not_found`);
-        });
-
-        it(`throws error when deleting single incorrect version instance`, async () => {
-            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            await expect(MyClass.delete(folderDocument1.id, 999)).to.be.eventually.rejectedWith(`[folder][1folder]: version conflict, current version`);
         });
     });
 
