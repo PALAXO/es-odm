@@ -16,9 +16,10 @@ const { esClient, setClient, esErrors } = require(`./lib/ElasticSearch`);
  * @param index         {string}
  * @param schema        {Joi | void}
  * @param indexType     {string}
+ * @param tenant        {string}
  * @returns             {BaseModelType}
  */
-function createClass(index, schema = Joi.object(), indexType = void 0) {
+function createClass(index, schema = Joi.object(), indexType = ``, tenant = `*`) {
     if (_.isNil(index) || !_.isString(index) || _.isEmpty(index)) {
         throw Error(`You have to specify an index.`);
     }
@@ -26,7 +27,7 @@ function createClass(index, schema = Joi.object(), indexType = void 0) {
     const properties = {
         __schema: schema,
 
-        _tenant: `default`,
+        _tenant: tenant,
         _index: index,
         _indexType: indexType
     };

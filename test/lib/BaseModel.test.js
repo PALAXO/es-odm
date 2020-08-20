@@ -16,32 +16,32 @@ describe(`BaseModel class`, function() {
         it(`creates new class`, async () => {
             const myClass = createClass(`myIndex`);
             expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass._tenant).to.equal(`default`);
-            expect(myClass._indexType).to.be.undefined;
+            expect(myClass._tenant).to.equal(`*`);
+            expect(myClass._indexType).to.equal(``);
 
-            expect(myClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(myClass.__fullIndex).to.equal(`*_myIndex`);
         });
 
         it(`creates new class with schema`, async () => {
             const schema = Joi.object().keys({}).required();
             const myClass = createClass(`myIndex`, schema);
-            expect(myClass._tenant).to.equal(`default`);
+            expect(myClass._tenant).to.equal(`*`);
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
-            expect(myClass._indexType).to.be.undefined;
+            expect(myClass._indexType).to.equal(``);
 
-            expect(myClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(myClass.__fullIndex).to.equal(`*_myIndex`);
         });
 
         it(`creates new class with schema and type`, async () => {
             const schema = Joi.object().keys({}).required();
             const myClass = createClass(`myIndex`, schema, `myType`);
-            expect(myClass._tenant).to.equal(`default`);
+            expect(myClass._tenant).to.equal(`*`);
             expect(myClass._index).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
             expect(myClass._indexType).to.equal(`myType`);
 
-            expect(myClass.__fullIndex).to.equal(`default_myIndex_myType`);
+            expect(myClass.__fullIndex).to.equal(`*_myIndex_myType`);
         });
 
         it(`creates new class and rewrites tenant`, async () => {
@@ -51,14 +51,14 @@ describe(`BaseModel class`, function() {
                 return this._tenant;
             };
             originalClass.x = `:)`;
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex_myType`);
-            expect(originalClass.myFunction()).to.equal(`default`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex_myType`);
+            expect(originalClass.myFunction()).to.equal(`*`);
 
             const myClass = originalClass.in(`myTenant`);
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex_myType`);
-            expect(originalClass.myFunction()).to.equal(`default`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex_myType`);
+            expect(originalClass.myFunction()).to.equal(`*`);
             expect(myClass._tenant).to.equal(`myTenant`);
             expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
             expect(myClass.myFunction()).to.equal(`myTenant`);
@@ -71,14 +71,14 @@ describe(`BaseModel class`, function() {
         it(`creates new class and rewrites tenant and type`, async () => {
             const schema = Joi.object().keys({}).required();
             const originalClass = createClass(`myIndex`, schema);
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._indexType).to.be.undefined;
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass._indexType).to.equal(``);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._indexType).to.be.undefined;
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass._indexType).to.equal(``);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
             expect(myClass._tenant).to.equal(`myTenant`);
             expect(myClass._indexType).to.equal(`myType`);
             expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
@@ -94,18 +94,18 @@ describe(`BaseModel class`, function() {
                 return this._indexType;
             };
 
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._indexType).to.be.undefined;
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass._indexType).to.equal(``);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
             expect(originalClass.myFunction).not.to.be.undefined;
-            expect(originalClass.myFunction()).to.be.undefined;
+            expect(originalClass.myFunction()).to.equal(``);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._indexType).to.be.undefined;
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass._indexType).to.equal(``);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
             expect(originalClass.myFunction).not.to.be.undefined;
-            expect(originalClass.myFunction()).to.be.undefined;
+            expect(originalClass.myFunction()).to.equal(``);
 
             expect(myClass._tenant).to.equal(`myTenant`);
             expect(myClass._indexType).to.equal(`myType`);
@@ -124,16 +124,16 @@ describe(`BaseModel class`, function() {
                 return `*`;
             };
 
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._indexType).to.be.undefined;
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass._indexType).to.equal(``);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
             expect(originalClass.find).not.to.be.undefined;
             expect(originalClass.find()).to.equal(`*`);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
-            expect(originalClass._tenant).to.equal(`default`);
-            expect(originalClass._indexType).to.be.undefined;
-            expect(originalClass.__fullIndex).to.equal(`default_myIndex`);
+            expect(originalClass._tenant).to.equal(`*`);
+            expect(originalClass._indexType).to.equal(``);
+            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
             expect(originalClass.find).not.to.be.undefined;
             expect(originalClass.find()).to.equal(`*`);
 
@@ -192,6 +192,39 @@ describe(`BaseModel class`, function() {
             expect(clonedClass.newFunction()).to.equal(`newFunction`);
             expect(clonedClass.anotherFunction()).to.equal(`anotherFunction`);
         });
+
+        it(`creates new class and changes tenant and type multiple times`, async () => {
+            const schema = Joi.object().keys({}).required();
+            let myClass = createClass(`myIndex`, schema);
+            expect(myClass._tenant).to.equal(`*`);
+            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._indexType).to.equal(``);
+            expect(myClass.__fullIndex).to.equal(`*_myIndex`);
+
+            myClass = myClass.in(`test`);
+            expect(myClass._tenant).to.equal(`test`);
+            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._indexType).to.equal(``);
+            expect(myClass.__fullIndex).to.equal(`test_myIndex`);
+
+            myClass = myClass.type(`typ`);
+            expect(myClass._tenant).to.equal(`test`);
+            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._indexType).to.equal(`typ`);
+            expect(myClass.__fullIndex).to.equal(`test_myIndex_typ`);
+
+            myClass = myClass.in(``);
+            expect(myClass._tenant).to.equal(``);
+            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._indexType).to.equal(`typ`);
+            expect(myClass.__fullIndex).to.equal(`myIndex_typ`);
+
+            myClass = myClass.type(``);
+            expect(myClass._tenant).to.equal(``);
+            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._indexType).to.equal(``);
+            expect(myClass.__fullIndex).to.equal(`myIndex`);
+        });
     });
 
     describe(`static search()`, () => {
@@ -204,7 +237,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -214,7 +246,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -224,7 +255,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -233,7 +263,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -242,7 +271,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -307,9 +335,15 @@ describe(`BaseModel class`, function() {
 
             expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(2);
+            expect(results._total).to.equal(2);
             const possibleValues = [userObject1.body.name, userObject2.body.name];
             for (const result of results) {
                 expect(possibleValues).to.include(result.name);
+
+                expect(result._id).to.be.a(`string`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
+                expect(result._version).to.be.a(`number`);
             }
         });
 
@@ -322,9 +356,15 @@ describe(`BaseModel class`, function() {
             });
 
             expect(results.length).to.equal(2);
+            expect(results._total).to.equal(2);
             const possibleValues = [userObject1.body.name, userObject2.body.name];
             for (const result of results) {
                 expect(possibleValues).to.include(result.name);
+
+                expect(result._id).to.be.a(`string`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
+                expect(result._version).to.be.a(`number`);
             }
         });
 
@@ -339,8 +379,11 @@ describe(`BaseModel class`, function() {
             });
 
             expect(results.length).to.equal(1);
+            expect(results._total).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
-            expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._primary_term).to.be.a(`number`);
+            expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0]._version).to.be.a(`number`);
             expect(results[0].status).to.equal(userObject1.body.status);
             expect(results[0].name).to.equal(userObject1.body.name);
         });
@@ -356,10 +399,35 @@ describe(`BaseModel class`, function() {
             });
 
             expect(results.length).to.equal(0);
+            expect(results._total).to.equal(0);
+        });
+
+        it(`won't find anything when searches using incorrect tenant`, async () => {
+            const MyClass = createClass(`documents`, void 0, `*`).in(`incorrect`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            expect(results.length).to.equal(0);
+            expect(results._total).to.equal(0);
+        });
+
+        it(`won't find anything when searches using empty tenant`, async () => {
+            const MyClass = createClass(`documents`, void 0, `*`).in(``);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            expect(results.length).to.equal(0);
+            expect(results._total).to.equal(0);
         });
 
         it(`searches for all documents`, async () => {
-            const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
+            const MyClass = createClass(`documents`, void 0, `*`);
             const results = await MyClass.search({
                 query: {
                     match_all: {}
@@ -367,18 +435,21 @@ describe(`BaseModel class`, function() {
             });
 
             expect(results.length).to.equal(3);
+            expect(results._total).to.equal(3);
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
             for (const result of results) {
                 expect(possibleValues).to.include(result.html);
 
-                //correct type and can save
+                //correct type and tenant and can save
                 expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
         });
 
         it(`searches for folder documents only`, async () => {
-            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
+            const indexType =`folder`;
+            const MyClass = createClass(`documents`, void 0, indexType);
             const results = await MyClass.search({
                 query: {
                     match_all: {}
@@ -390,8 +461,9 @@ describe(`BaseModel class`, function() {
             for (const result of results) {
                 expect(possibleValues).to.include(result.html);
 
-                //correct type and can save
-                expect(result.constructor._indexType).to.equal(folderDocument1.type);
+                //correct type and tenant and can save
+                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
         });
@@ -408,10 +480,14 @@ describe(`BaseModel class`, function() {
 
             expect(results[0]._id).not.to.be.undefined;
             expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._primary_term).not.to.be.undefined;
+            expect(results[0]._seq_no).not.to.be.undefined;
             expect(results[0]._source).to.be.undefined;
 
             expect(results[1]._id).not.to.be.undefined;
             expect(results[1]._version).not.to.be.undefined;
+            expect(results[1]._primary_term).not.to.be.undefined;
+            expect(results[1]._seq_no).not.to.be.undefined;
             expect(results[1]._source).to.be.undefined;
         });
 
@@ -427,19 +503,23 @@ describe(`BaseModel class`, function() {
 
             expect(results[0]._id).not.to.be.undefined;
             expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._primary_term).not.to.be.undefined;
+            expect(results[0]._seq_no).not.to.be.undefined;
             expect(results[0]._source).not.to.be.undefined;
             expect(results[0]._source.name).not.to.be.undefined;
             expect(results[0]._source.status).to.be.undefined;
 
             expect(results[1]._id).not.to.be.undefined;
             expect(results[1]._version).not.to.be.undefined;
+            expect(results[1]._primary_term).not.to.be.undefined;
+            expect(results[1]._seq_no).not.to.be.undefined;
             expect(results[1]._source).not.to.be.undefined;
             expect(results[1]._source.name).not.to.be.undefined;
             expect(results[1]._source.status).to.be.undefined;
         });
 
         it(`searches for documents with from parameter`, async () => {
-            const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
+            const MyClass = createClass(`documents`, void 0, `*`);
             const results = await MyClass.search({
                 query: {
                     match_all: {}
@@ -453,6 +533,7 @@ describe(`BaseModel class`, function() {
 
                 //correct type and can save
                 expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
         });
@@ -473,6 +554,7 @@ describe(`BaseModel class`, function() {
 
                 //correct type and can save
                 expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
         });
@@ -608,7 +690,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -618,7 +699,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -628,7 +708,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -637,7 +716,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -646,7 +724,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -664,7 +741,7 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds all user entries`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`, void 0);
             const results = await MyClass.findAll();
 
             expect(results).to.be.instanceOf(BulkArray);
@@ -672,6 +749,10 @@ describe(`BaseModel class`, function() {
             const possibleValues = [userObject1.body.name, userObject2.body.name];
             for (const result of results) {
                 expect(possibleValues).to.include(result.name);
+                expect(result._version).to.be.a(`number`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
+                expect(result.constructor._tenant).to.equal(`test`);
             }
         });
 
@@ -683,6 +764,9 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html, defaultDocument.body.html];
             for (const result of results) {
                 expect(possibleValues).to.include(result.html);
+                expect(result._version).to.be.a(`number`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
 
                 //correct type and can save
                 expect(result.constructor._indexType).to.not.equal(`*`);
@@ -691,16 +775,21 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds folder documents only`, async () => {
-            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
+            const indexType =`folder`;
+            const MyClass = createClass(`documents`, void 0, indexType);
             const results = await MyClass.findAll();
 
             expect(results.length).to.equal(2);
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleValues).to.include(result.html);
+                expect(result._version).to.be.a(`number`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(folderDocument1.type);
+                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
         });
@@ -716,7 +805,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -726,7 +814,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -736,7 +823,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -745,7 +831,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -754,7 +839,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -800,15 +884,17 @@ describe(`BaseModel class`, function() {
         });
 
         it(`finds given user entry`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
-            const result = await MyClass.find(userObject1.id);
+            const MyClass = createClass(`users`, void 0);
+            const results = await MyClass.find(userObject1.id);
 
-            expect(result).to.be.instanceOf(BulkArray);
-            expect(result.length).to.equal(1);
-            expect(result[0]._id).to.equal(userObject1.id);
-            expect(result[0]._version).not.to.be.undefined;
-            expect(result[0].name).to.equal(userObject1.body.name);
-            expect(result[0].status).to.equal(userObject1.body.status);
+            expect(results).to.be.instanceOf(BulkArray);
+            expect(results.length).to.equal(1);
+            expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0]._version).to.be.a(`number`);
+            expect(results[0]._primary_term).to.be.a(`number`);
+            expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.body.status);
         });
 
         it(`finds given user entry in array`, async () => {
@@ -818,13 +904,16 @@ describe(`BaseModel class`, function() {
             expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
-            expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._version).to.be.a(`number`);
+            expect(results[0]._primary_term).to.be.a(`number`);
+            expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
 
         it(`finds array of folder documents`, async () => {
-            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
+            const indexType =`folder`;
+            const MyClass = createClass(`documents`, void 0, indexType);
             const results = await MyClass.find([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -832,17 +921,20 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleIds).to.include(result._id);
-                expect(result._version).not.to.be.undefined;
+                expect(result._version).to.be.a(`number`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(folderDocument1.type);
+                expect(result.constructor._indexType).to.equal(indexType);
                 await result.save();
             }
         });
 
         it(`finds only existing ids from array`, async () => {
-            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
+            const indexType =`folder`;
+            const MyClass = createClass(`documents`, void 0, indexType);
             const results = await MyClass.find([`unknown`, folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -854,7 +946,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(folderDocument1.type);
+                expect(result.constructor._indexType).to.equal(indexType);
                 await result.save();
             }
         });
@@ -872,7 +964,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(folderDocument1.type);
+                expect(result.constructor._indexType).to.equal(`folder`);
                 await result.save();
             }
         });
@@ -888,7 +980,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -898,7 +989,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -908,7 +998,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -917,7 +1006,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -926,7 +1014,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -963,6 +1050,11 @@ describe(`BaseModel class`, function() {
             await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current index type '*', full index 'test_documents_*'!`);
         });
 
+        it(`can't get without specifying tenant`, async () => {
+            const MyClass = createClass(`documents`, void 0);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current tenant '*', full index '*_documents'!`);
+        });
+
         it(`can't get not-existing id`, async () => {
             const MyClass = createClass(`users`, void 0).in(`test`);
             await expect(MyClass.get(`unknown`)).to.be.eventually.rejectedWith(`Response Error`);
@@ -979,7 +1071,9 @@ describe(`BaseModel class`, function() {
             expect(result).to.be.instanceOf(BaseModel);
 
             expect(result._id).to.equal(userObject1.id);
-            expect(result._version).not.to.be.undefined;
+            expect(result._version).to.be.a(`number`);
+            expect(result._primary_term).to.be.a(`number`);
+            expect(result._seq_no).to.be.a(`number`);
             expect(result.name).to.equal(userObject1.body.name);
             expect(result.status).to.equal(userObject1.body.status);
         });
@@ -991,13 +1085,16 @@ describe(`BaseModel class`, function() {
             expect(results).to.be.instanceOf(BulkArray);
             expect(results.length).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
-            expect(results[0]._version).not.to.be.undefined;
+            expect(results[0]._version).to.be.a(`number`);
+            expect(results[0]._primary_term).to.be.a(`number`);
+            expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
 
         it(`gets array of folder documents`, async () => {
-            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
+            const indexType =`folder`;
+            const MyClass = createClass(`documents`, void 0, indexType).in(`test`);
             const results = await MyClass.get([folderDocument1.id, folderDocument2.id]);
 
             expect(results.length).to.equal(2);
@@ -1005,11 +1102,13 @@ describe(`BaseModel class`, function() {
             const possibleValues = [folderDocument1.body.html, folderDocument2.body.html];
             for (const result of results) {
                 expect(possibleIds).to.include(result._id);
-                expect(result._version).not.to.be.undefined;
+                expect(result._version).to.be.a(`number`);
+                expect(result._primary_term).to.be.a(`number`);
+                expect(result._seq_no).to.be.a(`number`);
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(folderDocument1.type);
+                expect(result.constructor._indexType).to.equal(indexType);
                 await result.save();
             }
         });
@@ -1025,7 +1124,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -1035,7 +1133,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -1045,7 +1142,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -1054,7 +1150,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -1063,7 +1158,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -1097,7 +1191,12 @@ describe(`BaseModel class`, function() {
 
         it(`can't delete without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current index type!`);
+            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current index type '*', full index 'test_documents_*'!`);
+        });
+
+        it(`can't delete multiple ids when version is specified`, async () => {
+            const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
+            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id], 6)).to.be.eventually.rejectedWith(`You cannot use parameter 'version' with multiple ids specified!`);
         });
 
         it(`can't delete not-existing id`, async () => {
@@ -1115,7 +1214,6 @@ describe(`BaseModel class`, function() {
 
             const exists = await bootstrapTest.client.exists({
                 index: userObject1.index,
-                type: userObject1.type,
                 id: userObject1.id
             });
             expect(exists.body).to.be.false;
@@ -1129,7 +1227,6 @@ describe(`BaseModel class`, function() {
 
             const exists = await bootstrapTest.client.exists({
                 index: userObject1.index,
-                type: userObject1.type,
                 id: userObject1.id
             });
             expect(exists.body).to.be.false;
@@ -1144,14 +1241,12 @@ describe(`BaseModel class`, function() {
 
             const exists1 = await bootstrapTest.client.exists({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(exists1.body).to.be.false;
 
             const exists2 = await bootstrapTest.client.exists({
                 index: folderDocument2.index,
-                type: folderDocument2.type,
                 id: folderDocument2.id
             });
             expect(exists2.body).to.be.false;
@@ -1168,14 +1263,12 @@ describe(`BaseModel class`, function() {
 
             const exists1 = await bootstrapTest.client.exists({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(exists1.body).to.be.false;
 
             const exists2 = await bootstrapTest.client.exists({
                 index: folderDocument2.index,
-                type: folderDocument2.type,
                 id: folderDocument2.id
             });
             expect(exists2.body).to.be.false;
@@ -1184,6 +1277,35 @@ describe(`BaseModel class`, function() {
         it(`throws error when deleting single incorrect instance`, async () => {
             const MyClass = createClass(`documents`, void 0, `folder`).in(`test`);
             await expect(MyClass.delete(`whatever`)).to.be.eventually.rejectedWith(`not_found`);
+        });
+
+        it(`can't delete incorrect version`, async () => {
+            const record = await bootstrapTest.client.get({
+                index: userObject1.index,
+                id: userObject1.id
+            });
+            const storedVersion = record.body._version;
+
+            const MyClass = createClass(`users`, void 0).in(`test`);
+            await expect(MyClass.delete(userObject1.id, storedVersion + 1))
+                .to.be.eventually.rejectedWith(`Specified version '${storedVersion + 1}' is different than stored version '${storedVersion}'!`);
+        });
+
+        it(`deletes correct version`, async () => {
+            const record = await bootstrapTest.client.get({
+                index: userObject1.index,
+                id: userObject1.id
+            });
+            const storedVersion = record.body._version;
+
+            const MyClass = createClass(`users`, void 0).in(`test`);
+            await MyClass.delete(userObject1.id, storedVersion);
+
+            const exists = await bootstrapTest.client.exists({
+                index: userObject1.index,
+                id: userObject1.id
+            });
+            expect(exists.body).to.be.false;
         });
     });
 
@@ -1197,7 +1319,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -1207,7 +1328,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -1217,7 +1337,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -1226,7 +1345,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -1235,7 +1353,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -1269,7 +1386,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't check without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current index type!`);
+            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current index type '*', full index 'test_documents_*'!`);
         });
 
         it(`checks not-existing id`, async () => {
@@ -1325,7 +1442,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -1335,7 +1451,6 @@ describe(`BaseModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -1345,7 +1460,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -1354,7 +1468,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -1363,7 +1476,6 @@ describe(`BaseModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },
@@ -1397,7 +1509,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't update without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.update([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'update' with current index type!`);
+            await expect(MyClass.update([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'update' with current index type '*', full index 'test_documents_*'!`);
         });
 
         it(`can't update without body specified`, async () => {
@@ -1419,14 +1531,12 @@ describe(`BaseModel class`, function() {
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(results1.body._source.documentTitle).to.equal(`:)`);
 
             const results2 = await bootstrapTest.client.get({
                 index: folderDocument2.index,
-                type: folderDocument2.type,
                 id: folderDocument2.id
             });
             expect(results2.body._source.documentTitle).to.equal(`:)`);
@@ -1446,14 +1556,12 @@ describe(`BaseModel class`, function() {
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(results1.body._source.name).to.be.undefined;
 
             const results2 = await bootstrapTest.client.get({
                 index: folderDocument2.index,
-                type: folderDocument2.type,
                 id: folderDocument2.id
             });
             expect(results2.body._source.name).to.be.undefined;
@@ -1470,10 +1578,94 @@ describe(`BaseModel class`, function() {
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(results1.body._source.name).to.be.undefined;
+        });
+    });
+
+    describe(`static count()`, () => {
+        let userObject1;
+        let userObject2;
+        let folderDocument1;
+        let folderDocument2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                body: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                body: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            folderDocument1 = {
+                index: `test_documents_folder`,
+                body: {
+                    html: `folder 1`
+                },
+                id: `1folder`,
+                refresh: true
+            };
+            folderDocument2 = {
+                index: `test_documents_folder`,
+                body: {
+                    html: `folder 2`
+                },
+                id: `2folder`,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents_d_default`,
+                body: {
+                    html: `d_default`
+                },
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(folderDocument1),
+                bootstrapTest.client.index(folderDocument2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`counts user entries`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+            const count = await MyClass.count();
+            expect(count).to.equal(2);
+        });
+
+        it(`counts all documents entries`, async () => {
+            const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
+            const count = await MyClass.count();
+            expect(count).to.equal(3);
+        });
+
+        it(`counts all folder entries without tenant specified`, async () => {
+            const MyClass = createClass(`documents`, void 0, `folder`);
+            const count = await MyClass.count();
+            expect(count).to.equal(2);
+        });
+
+        it(`counts all documents entries without tenant specified`, async () => {
+            const MyClass = createClass(`documents`, void 0, `*`);
+            const count = await MyClass.count();
+            expect(count).to.equal(3);
         });
     });
 
@@ -1484,7 +1676,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -1493,7 +1684,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -1524,14 +1714,40 @@ describe(`BaseModel class`, function() {
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(results1.body._source.documentTitle).to.equal(`:)`);
 
             const results2 = await bootstrapTest.client.get({
                 index: folderDocument2.index,
-                type: folderDocument2.type,
+                id: folderDocument2.id
+            });
+            expect(results2.body._source.documentTitle).to.equal(`:)`);
+        });
+
+        it(`updates data instances without tenant specified`, async () => {
+            const DocumentClass = createClass(`documents`, void 0, `folder`);
+
+            const result = await DocumentClass.updateByQuery({
+                query: {
+                    match_all: {}
+                },
+
+                script: {
+                    source: `ctx._source.documentTitle = ':)'`,
+                    lang: `painless`
+                }
+            });
+            expect(result.updated).to.equal(2);
+
+            const results1 = await bootstrapTest.client.get({
+                index: folderDocument1.index,
+                id: folderDocument1.id
+            });
+            expect(results1.body._source.documentTitle).to.equal(`:)`);
+
+            const results2 = await bootstrapTest.client.get({
+                index: folderDocument2.index,
                 id: folderDocument2.id
             });
             expect(results2.body._source.documentTitle).to.equal(`:)`);
@@ -1545,7 +1761,6 @@ describe(`BaseModel class`, function() {
         beforeEach(async () => {
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -1554,7 +1769,6 @@ describe(`BaseModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -1580,19 +1794,47 @@ describe(`BaseModel class`, function() {
 
             const results1 = await bootstrapTest.client.exists({
                 index: folderDocument1.index,
-                type: folderDocument1.type,
                 id: folderDocument1.id
             });
             expect(results1.body).to.be.false;
 
             const results2 = await bootstrapTest.client.exists({
                 index: folderDocument2.index,
-                type: folderDocument2.type,
+                id: folderDocument2.id
+            });
+            expect(results2.body).to.be.false;
+        });
+
+        it(`deletes data instances without tenant specified`, async () => {
+            const DocumentClass = createClass(`documents`, void 0, `folder`);
+
+            const result = await DocumentClass.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            expect(result.deleted).to.equal(2);
+
+            const results1 = await bootstrapTest.client.exists({
+                index: folderDocument1.index,
+                id: folderDocument1.id
+            });
+            expect(results1.body).to.be.false;
+
+            const results2 = await bootstrapTest.client.exists({
+                index: folderDocument2.index,
                 id: folderDocument2.id
             });
             expect(results2.body).to.be.false;
         });
     });
+
+    //todo - createIndex
+    //todo - indexExists
+    //todo - deleteIndex
+    //todo - getMapping
+    //todo - putMapping
+    //todo - reindex
 
     describe(`save()`, () => {
         it(`can't save invalid data`, async () => {
@@ -1633,6 +1875,8 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
             expect(myInstance._id).not.to.be.undefined;
             expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1659,6 +1903,8 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
             expect(myInstance._id).not.to.be.undefined;
             expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1685,6 +1931,9 @@ describe(`BaseModel class`, function() {
             };
             const myInstance = new MyClass(data, `myId`);
             await myInstance.save();
+            expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1711,6 +1960,9 @@ describe(`BaseModel class`, function() {
             myInstance.name = `abc`;
             myInstance.fullname = `abc def`;
             await myInstance.save();
+            expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1740,14 +1992,20 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
             expect(myInstance._id).not.to.be.undefined;
             expect(myInstance._version).not.to.be.undefined;
-            const newId = myInstance._id;
-            const newVersion = myInstance._version;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
+            const oldId = myInstance._id;
+            const oldVersion = myInstance._version;
+            //primary term should be the same
+            const oldSeqNo = myInstance._seq_no;    //even seq_no can stay the same, if primary term changes...
 
             myInstance.status = `:(`;
             await myInstance.save();
-            expect(myInstance._id).to.equal(newId);
+            expect(myInstance._id).to.equal(oldId);
             expect(myInstance._version).not.to.be.undefined;
-            expect(myInstance._version).to.not.equal(newVersion);
+            expect(myInstance._version).to.not.equal(oldVersion);
+            expect(myInstance._seq_no).not.to.be.undefined;
+            expect(myInstance._seq_no).to.not.equal(oldSeqNo);
 
             const results = await bootstrapTest.client.search({
                 index: MyClass.__fullIndex,
@@ -1759,11 +2017,134 @@ describe(`BaseModel class`, function() {
                 version: true
             });
             expect(results.body.hits.total.value).to.equal(1);
-            expect(results.body.hits.hits[0]._id).to.equal(newId);
+            expect(results.body.hits.hits[0]._id).to.equal(oldId);
             expect(results.body.hits.hits[0]._version).to.equal(myInstance._version);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:(`);
             expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
             expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
+        });
+
+        it(`saves instance with specified version`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+
+            await myInstance.save();
+            const oldId = myInstance._id;
+            const oldVersion = myInstance._version;
+            const oldSeqNo = myInstance._seq_no;
+
+            await myInstance.save(true);
+            expect(myInstance._id).to.equal(oldId);
+            expect(myInstance._version).to.not.equal(oldVersion);
+            expect(myInstance._seq_no).to.not.equal(oldSeqNo);
+        });
+
+        it(`can't save instance when sequence numbers are different`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            await myInstance.save();
+
+            await bootstrapTest.client.index({
+                index: MyClass.__fullIndex,
+                id: myInstance._id,
+                body: {
+                    status: `:(`
+                },
+                refresh: true
+            });
+
+            await expect(myInstance.save(true)).to.be.eventually.rejectedWith(`version_conflict_engine_exception`);
+
+        });
+
+        it(`saves instance with specified version but without sequence numbers, automatically fetches sequence numbers`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const savedInstance = new MyClass(data);
+            await savedInstance.save();
+            const oldId = savedInstance._id;
+            const oldVersion = savedInstance._version;
+            const oldSeqNo = savedInstance._seq_no;
+
+            const myInstance = new MyClass(data, savedInstance._id, savedInstance._version);
+            await myInstance.save(true);
+            expect(myInstance._id).to.equal(oldId);
+            expect(myInstance._version).to.not.equal(oldVersion);
+            expect(myInstance._seq_no).to.not.equal(oldSeqNo);
+        });
+
+        it(`can't save with specified incorrect version and without sequence numbers, automatically fetches sequence numbers`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const savedInstance = new MyClass(data);
+            await savedInstance.save();
+
+            const myInstance = new MyClass(data, savedInstance._id, savedInstance._version + 1);
+            await expect(myInstance.save(true)).to.be.eventually.rejectedWith(`Actual version '${savedInstance._version + 1}' is different than stored version '${savedInstance._version}'!`);
+        });
+    });
+
+    describe(`reload()`, () => {
+        it(`reloads instance`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data, `ok`);
+            await myInstance.save();
+
+            myInstance.status = `:(`;
+            myInstance.name = `xyz`;
+            myInstance.fullname = `incorrect`;
+
+            const oldVersion = myInstance._version;
+            //primary term may be the same
+            const oldSeqNo = myInstance._seq_no;    //even seq_no may be the same if primary term changes...
+
+            await bootstrapTest.client.index({
+                index: MyClass.__fullIndex,
+                id: `ok`,
+                body: {
+                    status: `:D`,
+                    name: `ABC`,
+                    fullname: `ABC def`
+                },
+                refresh: true
+            });
+
+            await myInstance.reload();
+
+            expect(myInstance._id).to.equal(`ok`);
+            expect(myInstance._version).to.not.equal(oldVersion);
+            expect(myInstance._seq_no).to.not.equal(oldSeqNo);
+            expect(myInstance.status).to.equal(`:D`);
+            expect(myInstance.name).to.equal(`ABC`);
+            expect(myInstance.fullname).to.equal(`ABC def`);
         });
     });
 
@@ -1823,6 +2204,96 @@ describe(`BaseModel class`, function() {
                 version: true
             });
             expect(results.body.hits.total.value).to.equal(0);
+        });
+
+        it(`deletes instance with specified version`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            await myInstance.save();
+
+            await myInstance.delete(true);
+
+            const results = await bootstrapTest.client.search({
+                index: MyClass.__fullIndex,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                },
+                version: true
+            });
+            expect(results.body.hits.total.value).to.equal(0);
+        });
+
+        it(`can't delete instance when sequence numbers are different`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            await myInstance.save();
+
+            await bootstrapTest.client.index({
+                index: MyClass.__fullIndex,
+                id: myInstance._id,
+                body: {
+                    status: `:(`
+                },
+                refresh: true
+            });
+
+            await expect(myInstance.delete(true)).to.be.eventually.rejectedWith(`version_conflict_engine_exception`);
+
+        });
+
+        it(`deletes instance with specified version but without sequence numbers, automatically fetches sequence numbers`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const savedInstance = new MyClass(data);
+            await savedInstance.save();
+
+            const myInstance = new MyClass(data, savedInstance._id, savedInstance._version);
+            await myInstance.delete(true);
+
+            const results = await bootstrapTest.client.search({
+                index: MyClass.__fullIndex,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                },
+                version: true
+            });
+            expect(results.body.hits.total.value).to.equal(0);
+        });
+
+        it(`can't delete with specified incorrect version and without sequence numbers, automatically fetches sequence numbers`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const savedInstance = new MyClass(data);
+            await savedInstance.save();
+
+            const myInstance = new MyClass(data, savedInstance._id, savedInstance._version + 1);
+            await expect(myInstance.delete(true)).to.be.eventually.rejectedWith(`Actual version '${savedInstance._version + 1}' is different than stored version '${savedInstance._version}'!`);
         });
     });
 
