@@ -4,7 +4,7 @@ const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
 const { createClass, BulkArray, BaseModel } = require(`../../app`);
 
-//It uses ES6 Circularo indices
+//It uses ES7 Circularo indices
 describe(`BaseModel class`, function() {
     this.timeout(testTimeout);
 
@@ -1047,12 +1047,12 @@ describe(`BaseModel class`, function() {
 
         it(`can't get without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current index type '*', full index 'test_documents_*'!`);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current index type '*', full index is 'test_documents_*'!`);
         });
 
         it(`can't get without specifying tenant`, async () => {
             const MyClass = createClass(`documents`, void 0);
-            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current tenant '*', full index '*_documents'!`);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current tenant '*', full index is '*_documents'!`);
         });
 
         it(`can't get not-existing id`, async () => {
@@ -1191,7 +1191,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't delete without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current index type '*', full index 'test_documents_*'!`);
+            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current index type '*', full index is 'test_documents_*'!`);
         });
 
         it(`can't delete multiple ids when version is specified`, async () => {
@@ -1386,7 +1386,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't check without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current index type '*', full index 'test_documents_*'!`);
+            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current index type '*', full index is 'test_documents_*'!`);
         });
 
         it(`checks not-existing id`, async () => {
@@ -1509,7 +1509,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't update without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.update([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'update' with current index type '*', full index 'test_documents_*'!`);
+            await expect(MyClass.update([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'update' with current index type '*', full index is 'test_documents_*'!`);
         });
 
         it(`can't update without body specified`, async () => {
@@ -1829,12 +1829,228 @@ describe(`BaseModel class`, function() {
         });
     });
 
-    //todo - createIndex
-    //todo - indexExists
-    //todo - deleteIndex
-    //todo - getMapping
-    //todo - putMapping
-    //todo - reindex
+    describe(`createIndex`, () => {
+        it(`can't create index with wildcard in index`, async () => {
+            const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
+
+            await expect(MyRevisions.createIndex()).to.be.eventually.rejectedWith(`You cannot use 'createIndex' with current tenant '*', full index is '*_revisions_test_form'!`);
+        });
+
+        it(`creates new index`, async () => {
+            const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+
+            await MyRevisions.createIndex();
+
+            const exists = await bootstrapTest.client.indices.exists({
+                index: MyRevisions.__fullIndex
+            });
+            expect(exists.body).to.be.true;
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_test_form`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`indexExists`, () => {
+        it(`can't check index with wildcard in index`, async () => {
+            const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
+
+            await expect(MyRevisions.indexExists()).to.be.eventually.rejectedWith(`You cannot use 'indexExists' with current tenant '*', full index is '*_revisions_test_form'!`);
+        });
+
+        it(`checks if index exists`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_test_form`
+            });
+
+            const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+
+            const exists = await MyRevisions.indexExists();
+            expect(exists).to.be.true;
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_test_form`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`deleteIndex`, () => {
+        it(`can't delete index with wildcard in index`, async () => {
+            const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
+
+            await expect(MyRevisions.deleteIndex()).to.be.eventually.rejectedWith(`You cannot use 'deleteIndex' with current tenant '*', full index is '*_revisions_test_form'!`);
+        });
+
+        it(`deletes index`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_test_form`
+            });
+
+            const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+
+            await MyRevisions.deleteIndex();
+
+            const exists = await bootstrapTest.client.indices.exists({
+                index: MyRevisions.__fullIndex
+            });
+            expect(exists.body).to.be.false;
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_test_form`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`getMapping`, () => {
+        it(`can't get mapping of index with wildcard`, async () => {
+            const MyRevisions = createClass(`users`); //tenant is *
+
+            await expect(MyRevisions.getMapping()).to.be.eventually.rejectedWith(`You cannot use 'getMapping' with current tenant '*', full index is '*_users'!`);
+        });
+
+        it(`gets mapping of index`, async () => {
+            const MyRevisions = createClass(`users`).in(`test`);
+
+            const mapping = await MyRevisions.getMapping();
+            expect(mapping).to.be.an(`object`);
+            expect(mapping.test_users).to.be.an(`object`);
+        });
+    });
+
+    describe(`putMapping`, () => {
+        it(`can't put mapping to index with wildcard`, async () => {
+            const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
+
+            await expect(MyRevisions.getMapping()).to.be.eventually.rejectedWith(`You cannot use 'getMapping' with current tenant '*', full index is '*_revisions_test_form'!`);
+        });
+
+        it(`puts mapping to index`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_test_form`
+            });
+
+            const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+
+            const mapping = {
+                properties: {
+                    test: {
+                        type: `text`
+                    }
+                }
+            };
+            await MyRevisions.putMapping(mapping);
+
+            const response = await bootstrapTest.client.indices.getMapping({
+                index: `test_revisions_test_form`
+            });
+            expect(response.body.test_revisions_test_form.mappings.properties.test.type).to.equal(`text`);
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_test_form`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`reindex`, () => {
+        it(`can't reindex index without destination index specified`, async () => {
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+
+            await expect(MyRevisionsSource.reindex()).to.be.eventually.rejectedWith(`You must specify destination model!`);
+        });
+
+        it(`can't reindex index with wildcard in source index`, async () => {
+            const MyRevisionsSource = createClass(`revisions`).type(`from`); //tenant is *
+            const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
+
+            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-source' with current tenant '*', full index is '*_revisions_from'!`);
+        });
+
+        it(`can't reindex index with wildcard in destination index`, async () => {
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+            const MyRevisionsDestination = createClass(`revisions`).type(`to`); //tenant is *
+
+            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-destination' with current tenant '*', full index is '*_revisions_to'!`);
+        });
+
+        it(`reindexes models`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_from`
+            });
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_to`
+            });
+
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+            const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
+
+            await bootstrapTest.client.index({
+                index: MyRevisionsSource.__fullIndex,
+                id: `test`,
+                body: {
+                    status: `:)`
+                },
+                refresh: true
+            });
+
+            await MyRevisionsSource.reindex(MyRevisionsDestination);
+
+            const results = await bootstrapTest.client.search({
+                index: MyRevisionsDestination.__fullIndex,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                },
+                version: true
+            });
+            expect(results.body.hits.hits.length).to.equal(1);
+            expect(results.body.hits.hits[0]._index).to.equal(MyRevisionsDestination.__fullIndex);
+            expect(results.body.hits.hits[0]._id).to.equal(`test`);
+            expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_from`
+                });
+            } catch (e) {
+                //OK
+            }
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_to`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
 
     describe(`save()`, () => {
         it(`can't save invalid data`, async () => {
@@ -2312,6 +2528,8 @@ describe(`BaseModel class`, function() {
 
             expect(clone._id).to.equal(myInstance._id);
             expect(clone._version).to.equal(myInstance._version);
+            expect(clone._primary_term).to.equal(myInstance._primary_term);
+            expect(clone._seq_no).to.equal(myInstance._seq_no);
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
@@ -2321,12 +2539,16 @@ describe(`BaseModel class`, function() {
 
             expect(myInstance._id).to.equal(`ok`);
             expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
             expect(myInstance.status).to.equal(`:(`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
 
             expect(clone._id).to.equal(myInstance._id);
             expect(clone._version).to.equal(myInstance._version);
+            expect(clone._version).to.equal(myInstance._version);
+            expect(clone._primary_term).to.equal(myInstance._primary_term);
             expect(clone.status).to.equal(`:)`);
             expect(clone.name).to.equal(`xyz`);
             expect(clone.fullname).to.equal(`abc def`);
@@ -2346,6 +2568,8 @@ describe(`BaseModel class`, function() {
 
             expect(clone._id).to.be.undefined;
             expect(clone._version).to.be.undefined;
+            expect(clone._primary_term).to.be.undefined;
+            expect(clone._seq_no).to.be.undefined;
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
@@ -2355,12 +2579,16 @@ describe(`BaseModel class`, function() {
 
             expect(myInstance._id).to.equal(`ok`);
             expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
             expect(myInstance.status).to.equal(`:(`);
             expect(myInstance.name).to.equal(`abc`);
             expect(myInstance.fullname).to.equal(`abc def`);
 
             expect(clone._id).to.be.undefined;
             expect(clone._version).to.be.undefined;
+            expect(clone._primary_term).to.be.undefined;
+            expect(clone._seq_no).to.be.undefined;
             expect(clone.status).to.equal(`:)`);
             expect(clone.name).to.equal(`xyz`);
             expect(clone.fullname).to.equal(`abc def`);

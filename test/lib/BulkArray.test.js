@@ -4,7 +4,7 @@ const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
 const { createClass, BulkArray } = require(`../../app`);
 
-//It uses ES6 Circularo indices
+//It uses ES7 Circularo indices
 describe(`BulkArray class`, function() {
     this.timeout(testTimeout);
 
@@ -529,7 +529,65 @@ describe(`BulkArray class`, function() {
         });
     });
 
-    //todo - reload
+    describe(`reload()`, () => {
+        it(`reloads bulk array`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data, `ok`);
+            const myInstance2 = new MyClass(data, `ko`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            await bulk.save();
+
+            const oldVersion1 = myInstance1._version;
+            const oldSeqNo1 = myInstance1._seq_no;
+
+            const oldVersion2 = myInstance2._version;
+            const oldSeqNo2 = myInstance2._seq_no;
+
+            await bootstrapTest.client.index({
+                index: MyClass.__fullIndex,
+                id: `ok`,
+                body: {
+                    status: `:D`,
+                    name: `ABC`,
+                    fullname: `ABC def`
+                },
+                refresh: true
+            });
+            await bootstrapTest.client.index({
+                index: MyClass.__fullIndex,
+                id: `ko`,
+                body: {
+                    status: `:/`,
+                    name: `DEF`,
+                    fullname: `DEF abc`
+                },
+                refresh: true
+            });
+
+            await bulk.reload();
+
+            expect(myInstance1._id).to.equal(`ok`);
+            expect(myInstance1._version).to.not.equal(oldVersion1);
+            expect(myInstance1._seq_no).to.not.equal(oldSeqNo1);
+            expect(myInstance1.status).to.equal(`:D`);
+            expect(myInstance1.name).to.equal(`ABC`);
+            expect(myInstance1.fullname).to.equal(`ABC def`);
+
+            expect(myInstance2._id).to.equal(`ko`);
+            expect(myInstance2._version).to.not.equal(oldVersion2);
+            expect(myInstance2._seq_no).to.not.equal(oldSeqNo2);
+            expect(myInstance2.status).to.equal(`:/`);
+            expect(myInstance2.name).to.equal(`DEF`);
+            expect(myInstance2.fullname).to.equal(`DEF abc`);
+        });
+    });
 
     describe(`functional tests`, () => {
         it(`Bulk status test`, async () => {
