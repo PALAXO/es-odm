@@ -1574,7 +1574,7 @@ describe(`BaseModel class`, function() {
                 doc: {
                     name: `:)`
                 }
-            })).to.be.eventually.rejectedWith(`mapping set to strict, dynamic introduction of [name] within [folder] is not allowed`);
+            })).to.be.eventually.rejectedWith(`mapping set to strict, dynamic introduction of [name] within [_doc] is not allowed`);
 
             const results1 = await bootstrapTest.client.get({
                 index: folderDocument1.index,

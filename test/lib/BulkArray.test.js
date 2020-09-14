@@ -325,7 +325,6 @@ describe(`BulkArray class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:)`,
                     name: `happy`
@@ -335,7 +334,6 @@ describe(`BulkArray class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                type: `user`,
                 body: {
                     status: `:(`,
                     name: `sad`
@@ -345,7 +343,6 @@ describe(`BulkArray class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 1`
                 },
@@ -354,7 +351,6 @@ describe(`BulkArray class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                type: `folder`,
                 body: {
                     html: `folder 2`
                 },
@@ -363,7 +359,6 @@ describe(`BulkArray class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                type: `d_default`,
                 body: {
                     html: `d_default`
                 },

@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "ODM",
   "keywords": [
     "circularo",
@@ -21,6 +21,7 @@
   "dependencies": {
     "@elastic/elasticsearch": "^7.9.0",
     "@hapi/joi": "17.1.1",
+    "bunyan": "1.8.14",
     "lodash": "4.17.20",
     "nconf": "0.10.0",
     "uuid": "8.3.0"
@@ -28,9 +29,9 @@
   "devDependencies": {
     "chai": "4.2.0",
     "chai-as-promised": "7.1.1",
-    "eslint": "7.7.0",
+    "eslint": "7.9.0",
     "eslint-plugin-mocha": "8.0.0",
     "eslint-plugin-promise": "4.2.1",
-    "mocha": "8.1.1"
+    "mocha": "8.1.3"
   }
 }
