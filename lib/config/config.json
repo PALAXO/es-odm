@@ -15,5 +15,14 @@
     "maxResults": 10000,
     "scrollTimeout": "5s",
     "retryOnConflict": 10
+  },
+  "logger": {
+    "name": "elasticsearch",
+    "streams": [
+      {
+        "level": "info",
+        "type": "console"
+      }
+    ]
   }
 }

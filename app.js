@@ -6,6 +6,7 @@ const _ = require(`lodash`);
 const { cloneClass, BaseModel } = require(`./lib/BaseModel`);
 const BulkArray = require(`./lib/BulkArray`);
 const { changeClient, errors } = require(`./lib/ElasticSearch`);
+const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
 
 /**
  * This is needed due to possible bug is JSDoc parser...
@@ -40,4 +41,5 @@ function setClient(configuration) {
     changeClient(configuration);
 }
 
-module.exports = { createClass, BulkArray, BaseModel, setClient, esErrors: errors };
+module.exports = { createClass, BulkArray, BaseModel, setClient, esErrors: errors,
+    setLoggerConfig, setLoggerUidFunction };
