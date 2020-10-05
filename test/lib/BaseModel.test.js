@@ -344,6 +344,7 @@ describe(`BaseModel class`, function() {
                 expect(result._primary_term).to.be.a(`number`);
                 expect(result._seq_no).to.be.a(`number`);
                 expect(result._version).to.be.a(`number`);
+                expect(result._score).to.be.a(`number`);
             }
         });
 
@@ -365,6 +366,7 @@ describe(`BaseModel class`, function() {
                 expect(result._primary_term).to.be.a(`number`);
                 expect(result._seq_no).to.be.a(`number`);
                 expect(result._version).to.be.a(`number`);
+                expect(result._score).to.be.a(`number`);
             }
         });
 
@@ -384,6 +386,7 @@ describe(`BaseModel class`, function() {
             expect(results[0]._primary_term).to.be.a(`number`);
             expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0]._version).to.be.a(`number`);
+            expect(results[0]._score).to.be.a(`number`);
             expect(results[0].status).to.equal(userObject1.body.status);
             expect(results[0].name).to.equal(userObject1.body.name);
         });
@@ -443,6 +446,7 @@ describe(`BaseModel class`, function() {
                 //correct type and tenant and can save
                 expect(result.constructor._indexType).to.not.equal(`*`);
                 expect(result.constructor._tenant).to.equal(`test`);
+                expect(result._score).to.be.a(`number`);
                 await result.save();
             }
         });
@@ -464,6 +468,7 @@ describe(`BaseModel class`, function() {
                 //correct type and tenant and can save
                 expect(result.constructor._indexType).to.equal(indexType);
                 expect(result.constructor._tenant).to.equal(`test`);
+                expect(result._score).to.be.a(`number`);
                 await result.save();
             }
         });
@@ -482,12 +487,14 @@ describe(`BaseModel class`, function() {
             expect(results[0]._version).not.to.be.undefined;
             expect(results[0]._primary_term).not.to.be.undefined;
             expect(results[0]._seq_no).not.to.be.undefined;
+            expect(results[0]._score).not.to.be.undefined;
             expect(results[0]._source).to.be.undefined;
 
             expect(results[1]._id).not.to.be.undefined;
             expect(results[1]._version).not.to.be.undefined;
             expect(results[1]._primary_term).not.to.be.undefined;
             expect(results[1]._seq_no).not.to.be.undefined;
+            expect(results[1]._score).not.to.be.undefined;
             expect(results[1]._source).to.be.undefined;
         });
 
@@ -505,6 +512,7 @@ describe(`BaseModel class`, function() {
             expect(results[0]._version).not.to.be.undefined;
             expect(results[0]._primary_term).not.to.be.undefined;
             expect(results[0]._seq_no).not.to.be.undefined;
+            expect(results[0]._score).not.to.be.undefined;
             expect(results[0]._source).not.to.be.undefined;
             expect(results[0]._source.name).not.to.be.undefined;
             expect(results[0]._source.status).to.be.undefined;
@@ -513,6 +521,7 @@ describe(`BaseModel class`, function() {
             expect(results[1]._version).not.to.be.undefined;
             expect(results[1]._primary_term).not.to.be.undefined;
             expect(results[1]._seq_no).not.to.be.undefined;
+            expect(results[1]._score).not.to.be.undefined;
             expect(results[1]._source).not.to.be.undefined;
             expect(results[1]._source.name).not.to.be.undefined;
             expect(results[1]._source.status).to.be.undefined;
@@ -767,6 +776,7 @@ describe(`BaseModel class`, function() {
                 expect(result._version).to.be.a(`number`);
                 expect(result._primary_term).to.be.a(`number`);
                 expect(result._seq_no).to.be.a(`number`);
+                expect(result._score).to.be.a(`number`);
 
                 //correct type and can save
                 expect(result.constructor._indexType).to.not.equal(`*`);
@@ -786,6 +796,7 @@ describe(`BaseModel class`, function() {
                 expect(result._version).to.be.a(`number`);
                 expect(result._primary_term).to.be.a(`number`);
                 expect(result._seq_no).to.be.a(`number`);
+                expect(result._score).to.be.a(`number`);
 
                 //correct type and can save
                 expect(result.constructor._indexType).to.equal(indexType);
@@ -893,6 +904,7 @@ describe(`BaseModel class`, function() {
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._primary_term).to.be.a(`number`);
             expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0]._score).to.be.a(`number`);
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
@@ -907,6 +919,7 @@ describe(`BaseModel class`, function() {
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._primary_term).to.be.a(`number`);
             expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0]._score).to.be.a(`number`);
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
@@ -924,6 +937,7 @@ describe(`BaseModel class`, function() {
                 expect(result._version).to.be.a(`number`);
                 expect(result._primary_term).to.be.a(`number`);
                 expect(result._seq_no).to.be.a(`number`);
+                expect(result._score).to.be.a(`number`);
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
@@ -1074,6 +1088,8 @@ describe(`BaseModel class`, function() {
             expect(result._version).to.be.a(`number`);
             expect(result._primary_term).to.be.a(`number`);
             expect(result._seq_no).to.be.a(`number`);
+            expect(result._score).to.be.a(`number`);
+            expect(result._score).to.equal(1);
             expect(result.name).to.equal(userObject1.body.name);
             expect(result.status).to.equal(userObject1.body.status);
         });
@@ -1088,6 +1104,8 @@ describe(`BaseModel class`, function() {
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._primary_term).to.be.a(`number`);
             expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0]._score).to.be.a(`number`);
+            expect(results[0]._score).to.equal(1);
             expect(results[0].name).to.equal(userObject1.body.name);
             expect(results[0].status).to.equal(userObject1.body.status);
         });
@@ -1105,6 +1123,8 @@ describe(`BaseModel class`, function() {
                 expect(result._version).to.be.a(`number`);
                 expect(result._primary_term).to.be.a(`number`);
                 expect(result._seq_no).to.be.a(`number`);
+                expect(result._score).to.be.a(`number`);
+                expect(result._score).to.equal(1);
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
@@ -2337,10 +2357,12 @@ describe(`BaseModel class`, function() {
             myInstance.status = `:(`;
             myInstance.name = `xyz`;
             myInstance.fullname = `incorrect`;
+            myInstance._score = 0.5;
 
             const oldVersion = myInstance._version;
             //primary term may be the same
             const oldSeqNo = myInstance._seq_no;    //even seq_no may be the same if primary term changes...
+            const oldScore = myInstance._score;
 
             await bootstrapTest.client.index({
                 index: MyClass.__fullIndex,
@@ -2358,6 +2380,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._id).to.equal(`ok`);
             expect(myInstance._version).to.not.equal(oldVersion);
             expect(myInstance._seq_no).to.not.equal(oldSeqNo);
+            expect(myInstance._score).to.equal(oldScore);
             expect(myInstance.status).to.equal(`:D`);
             expect(myInstance.name).to.equal(`ABC`);
             expect(myInstance.fullname).to.equal(`ABC def`);
@@ -2530,6 +2553,7 @@ describe(`BaseModel class`, function() {
             expect(clone._version).to.equal(myInstance._version);
             expect(clone._primary_term).to.equal(myInstance._primary_term);
             expect(clone._seq_no).to.equal(myInstance._seq_no);
+            expect(clone._score).to.equal(myInstance._score);
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
@@ -2570,6 +2594,7 @@ describe(`BaseModel class`, function() {
             expect(clone._version).to.be.undefined;
             expect(clone._primary_term).to.be.undefined;
             expect(clone._seq_no).to.be.undefined;
+            expect(clone._score).to.equal(myInstance._score);
             expect(clone.status).to.equal(data.status);
             expect(clone.name).to.equal(data.name);
             expect(clone.fullname).to.equal(data.fullname);
