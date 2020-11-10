@@ -41,6 +41,8 @@ exports = module.exports = {
     //modules
     client,
 
+    deleteData,
+
     //configuration
     nconf
 };

@@ -687,6 +687,286 @@ describe(`BaseModel class`, function() {
                 await result.save();
             }
         });
+
+        it(`normally searches when 0 is passed as scroll timeout`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, void 0, void 0, 0);
+            expect(results.length).to.be.greaterThan(0);
+            expect(results.scrollId).to.be.undefined;
+        });
+
+        it(`searches and manually scrolls`, async () => {
+            await bootstrapTest.deleteData();
+
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.__fullIndex,
+                        _id: `id_${`00000${i}`.substr(-5)}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${`00000${i}`.substr(-5)}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                body: bulk,
+                refresh: true
+            });
+
+            let results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, void 0, void 0, void 0, 10);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00000`);
+            expect(results[9999]._id).to.equal(`id_09999`);
+
+            let scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_10000`);
+            expect(results[9999]._id).to.equal(`id_19999`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_20000`);
+            expect(results[9999]._id).to.equal(`id_29999`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(5000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_30000`);
+            expect(results[4999]._id).to.equal(`id_34999`);
+        });
+
+        it(`searches and manually scrolls, takes care about source field`, async () => {
+            await bootstrapTest.deleteData();
+
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.__fullIndex,
+                        _id: `id_${`00000${i}`.substr(-5)}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${`00000${i}`.substr(-5)}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                body: bulk,
+                refresh: true
+            });
+
+            let results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, void 0, void 0, `name`, 10);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00000`);
+            expect(results[9999]._id).to.equal(`id_09999`);
+            expect(results[0].constructor._tenant).to.be.undefined;
+
+            let scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_10000`);
+            expect(results[9999]._id).to.equal(`id_19999`);
+            expect(results[0].constructor).not.to.be.undefined;
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, `name`, scrollId);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_20000`);
+            expect(results[9999]._id).to.equal(`id_29999`);
+            expect(results[0].constructor._tenant).to.be.undefined;
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(5000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_30000`);
+            expect(results[4999]._id).to.equal(`id_34999`);
+            expect(results[0].constructor).not.to.be.undefined;
+        });
+
+        it(`searches and manually scrolls with specifying from/size parameters`, async () => {
+            await bootstrapTest.deleteData();
+
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.__fullIndex,
+                        _id: `id_${`00000${i}`.substr(-5)}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${`00000${i}`.substr(-5)}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                body: bulk,
+                refresh: true
+            });
+
+            let results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, 0, 10, void 0, 10);
+            expect(results.length).to.equal(10);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00000`);
+            expect(results[9]._id).to.equal(`id_00009`);
+
+            let scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 10, void 0, void 0, scrollId);
+            expect(results.length).to.equal(9990);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_10010`);
+            expect(results[9989]._id).to.equal(`id_19999`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 10, 10, void 0, scrollId);
+            expect(results.length).to.equal(10);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_20010`);
+            expect(results[9]._id).to.equal(`id_20019`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 0, 0, void 0, scrollId);
+            expect(results.length).to.equal(0);
+            expect(results.scrollId).not.to.be.undefined;
+        });
+
+        it(`searches and manually scrolls with specifying another from/size parameters`, async () => {
+            await bootstrapTest.deleteData();
+
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.__fullIndex,
+                        _id: `id_${`00000${i}`.substr(-5)}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${`00000${i}`.substr(-5)}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                body: bulk,
+                refresh: true
+            });
+
+            let results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, 0, 0, void 0, 5);
+            expect(results.length).to.equal(0);
+            expect(results.scrollId).not.to.be.undefined;
+
+            let scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(10000);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_10000`);
+            expect(results[9999]._id).to.equal(`id_19999`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, 1, void 0, scrollId);
+            expect(results.length).to.equal(1);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_20000`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 4999, void 0, void 0, scrollId);
+            expect(results.length).to.equal(1);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_34999`);
+        });
+    });
+
+    describe(`static clearScroll()`, () => {
+        it(`can't clear scroll without specifying scroll id`, async () => {
+            const MyClass = createClass(`users`, void 0);
+
+            await expect(MyClass.clearScroll()).to.be.eventually.rejectedWith(`scrollId must be specified!`);
+        });
+
+        it(`clears scroll`, async () => {
+            const MyClass = createClass(`users`, void 0);
+
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, void 0, void 0, 10);
+
+            const scrollId = results.scrollId;
+            let result = await MyClass.clearScroll(scrollId);
+            expect(result).to.be.true;
+
+            //can't clear one more time
+            result = await MyClass.clearScroll(scrollId);
+            expect(result).to.be.false;
+        });
     });
 
     describe(`static findAll()`, () => {
