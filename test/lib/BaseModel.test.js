@@ -700,7 +700,7 @@ describe(`BaseModel class`, function() {
             expect(results.scrollId).to.be.undefined;
         });
 
-        it(`searches and manually scrolls`, async () => {
+        it(`searches and manually scrolls by max sizes (10k)`, async () => {
             await bootstrapTest.deleteData();
 
             const MyClass = createClass(`users`, void 0).in(`test`);
@@ -826,7 +826,7 @@ describe(`BaseModel class`, function() {
             expect(results[0].constructor).not.to.be.undefined;
         });
 
-        it(`searches and manually scrolls with specifying from/size parameters`, async () => {
+        it(`searches and manually scrolls by custom size`, async () => {
             await bootstrapTest.deleteData();
 
             const MyClass = createClass(`users`, void 0).in(`test`);
@@ -867,25 +867,46 @@ describe(`BaseModel class`, function() {
 
             let scrollId = results.scrollId;
             results = await MyClass.search(void 0, 10, void 0, void 0, scrollId);
-            expect(results.length).to.equal(9990);
+            expect(results.length).to.equal(0);
             expect(results.scrollId).not.to.be.undefined;
-            expect(results[0]._id).to.equal(`id_10010`);
-            expect(results[9989]._id).to.equal(`id_19999`);
 
             scrollId = results.scrollId;
-            results = await MyClass.search(void 0, 10, 10, void 0, scrollId);
-            expect(results.length).to.equal(10);
+            results = await MyClass.search(void 0, 1, 1, void 0, scrollId);
+            expect(results.length).to.equal(1);
             expect(results.scrollId).not.to.be.undefined;
-            expect(results[0]._id).to.equal(`id_20010`);
-            expect(results[9]._id).to.equal(`id_20019`);
+            expect(results[0]._id).to.equal(`id_00021`);
 
             scrollId = results.scrollId;
             results = await MyClass.search(void 0, 0, 0, void 0, scrollId);
             expect(results.length).to.equal(0);
             expect(results.scrollId).not.to.be.undefined;
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 0, 1000, void 0, scrollId);
+            expect(results.length).to.equal(10);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00040`);
+            expect(results[9]._id).to.equal(`id_00049`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 10, 1000, void 0, scrollId);
+            expect(results.length).to.equal(0);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 2, 1, void 0, scrollId);
+            expect(results.length).to.equal(1);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00062`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(10);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00070`);
+            expect(results[9]._id).to.equal(`id_00079`);
         });
 
-        it(`searches and manually scrolls with specifying another from/size parameters`, async () => {
+        it(`searches and manually scrolls by another custom size`, async () => {
             await bootstrapTest.deleteData();
 
             const MyClass = createClass(`users`, void 0).in(`test`);
@@ -918,28 +939,43 @@ describe(`BaseModel class`, function() {
                         order: `asc`
                     }
                 }
-            }, 0, 0, void 0, 5);
-            expect(results.length).to.equal(0);
+            }, 50, 100, void 0, 5);
+            expect(results.length).to.equal(50);
             expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00050`);
+            expect(results[49]._id).to.equal(`id_00099`);
 
             let scrollId = results.scrollId;
             results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
-            expect(results.length).to.equal(10000);
+            expect(results.length).to.equal(100);
             expect(results.scrollId).not.to.be.undefined;
-            expect(results[0]._id).to.equal(`id_10000`);
-            expect(results[9999]._id).to.equal(`id_19999`);
+            expect(results[0]._id).to.equal(`id_00100`);
+            expect(results[99]._id).to.equal(`id_00199`);
 
             scrollId = results.scrollId;
             results = await MyClass.search(void 0, void 0, 1, void 0, scrollId);
             expect(results.length).to.equal(1);
             expect(results.scrollId).not.to.be.undefined;
-            expect(results[0]._id).to.equal(`id_20000`);
+            expect(results[0]._id).to.equal(`id_00200`);
 
             scrollId = results.scrollId;
             results = await MyClass.search(void 0, 4999, void 0, void 0, scrollId);
-            expect(results.length).to.equal(1);
+            expect(results.length).to.equal(0);
             expect(results.scrollId).not.to.be.undefined;
-            expect(results[0]._id).to.equal(`id_34999`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, void 0, void 0, void 0, scrollId);
+            expect(results.length).to.equal(100);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00400`);
+            expect(results[99]._id).to.equal(`id_00499`);
+
+            scrollId = results.scrollId;
+            results = await MyClass.search(void 0, 50, void 0, void 0, scrollId);
+            expect(results.length).to.equal(50);
+            expect(results.scrollId).not.to.be.undefined;
+            expect(results[0]._id).to.equal(`id_00550`);
+            expect(results[49]._id).to.equal(`id_00599`);
         });
     });
 
