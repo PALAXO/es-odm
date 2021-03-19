@@ -4,6 +4,7 @@ const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
 
 const { cloneClass, BaseModel } = require(`./lib/BaseModel`);
+const { JointModel } = require(`./lib/JointModel`);
 const BulkArray = require(`./lib/BulkArray`);
 const { esClient, setClient, esErrors } = require(`./lib/ElasticSearch`);
 const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
@@ -37,5 +38,5 @@ function createClass(index, schema = Joi.object(), indexType = ``, tenant = `*`)
     return cloneClass(properties);
 }
 
-module.exports = { createClass, BulkArray, BaseModel, esClient, setClient, esErrors,
+module.exports = { createClass, BulkArray, BaseModel, JointModel, esClient, setClient, esErrors,
     setLoggerConfig, setLoggerUidFunction };
