@@ -256,6 +256,21 @@ describe(`JointModel class`, function() {
             await expect(jointModel.search()).to.be.eventually.rejectedWith(`No search has been recorded!`);
         });
 
+        it(`can't search with incorrect body`, async () => {
+            const jointModel = new JointModel();
+
+            const MyClass = jointModel.recordSearch(createClass(`users`, void 0).in(`test`));
+            await MyClass.search({
+                query: {
+                    match: {
+                        status: `:)`
+                    }
+                }
+            });
+
+            await expect(jointModel.search(`invalid`)).to.be.eventually.rejectedWith(`Incorrect body has been specified!`);
+        });
+
         it(`searches with single recorded query`, async () => {
             const jointModel = new JointModel();
 
@@ -269,6 +284,34 @@ describe(`JointModel class`, function() {
             });
 
             const results = await jointModel.search();
+            expect(results.length).to.equal(1);
+            expect(results._total).to.equal(1);
+            expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0]._primary_term).to.be.a(`number`);
+            expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0]._version).to.be.a(`number`);
+            expect(results[0]._score).to.be.a(`number`);
+            expect(results[0].status).to.equal(userObject1.body.status);
+            expect(results[0].name).to.equal(userObject1.body.name);
+        });
+
+        it(`will ignore query in JointModel search`, async () => {
+            const jointModel = new JointModel();
+
+            const MyClass = jointModel.recordSearch(createClass(`users`, void 0).in(`test`));
+            await MyClass.search({
+                query: {
+                    match: {
+                        status: `:)`
+                    }
+                }
+            });
+
+            const results = await jointModel.search({
+                query: {
+                    match_all: {}
+                }
+            });
             expect(results.length).to.equal(1);
             expect(results._total).to.equal(1);
             expect(results[0]._id).to.equal(userObject1.id);
@@ -485,7 +528,7 @@ describe(`JointModel class`, function() {
                 })
             ]);
 
-            const results = await jointModel.search(void 0, 1);
+            const results = await jointModel.search({}, 1);
             expect(results.length).to.equal(4);
             expect(results._total).to.equal(5);
         });
@@ -591,9 +634,11 @@ describe(`JointModel class`, function() {
             ]);
 
             const results = await jointModel.search({
-                index: {
-                    terms: {
-                        field: `_index`
+                aggs: {
+                    index: {
+                        terms: {
+                            field: `_index`
+                        }
                     }
                 }
             });
