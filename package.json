@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "2.5.3",
+  "version": "2.5.4",
   "description": "ODM",
   "keywords": [
     "circularo",
@@ -19,7 +19,7 @@
     "lint": "eslint **/*.js"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "^7.13.0",
+    "@elastic/elasticsearch": "7.14.0",
     "@hapi/joi": "17.1.1",
     "bunyan": "1.8.15",
     "lodash": "4.17.21",
