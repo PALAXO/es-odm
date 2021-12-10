@@ -214,7 +214,7 @@
    - Uses bulk API
    - Returns ES response
  
- - `static async count()`
+ - `static async count(?body)`
    - Performs ES 'count'
    - Returns number
    

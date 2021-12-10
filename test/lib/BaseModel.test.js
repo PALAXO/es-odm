@@ -2003,6 +2003,50 @@ describe(`BaseModel class`, function() {
             const count = await MyClass.count();
             expect(count).to.equal(3);
         });
+
+        it(`counts users with specific status`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+            const count = await MyClass.count({
+                query: {
+                    term: {
+                        status: `:)`
+                    }
+                }
+            });
+            expect(count).to.equal(1);
+        });
+
+        it(`counts users with one of multiple statuses`, async () => {
+            const MyClass = createClass(`users`, void 0);
+            const count = await MyClass.count({
+                query: {
+                    bool: {
+                        should: [{
+                            term: {
+                                status: `:)`
+                            }
+                        }, {
+                            term: {
+                                status: `:(`
+                            }
+                        }]
+                    }
+                }
+            });
+            expect(count).to.equal(2);
+        });
+
+        it(`counts documents with specific ids`, async () => {
+            const MyClass = createClass(`documents`, void 0, `*`);
+            const count = await MyClass.count({
+                query: {
+                    ids: {
+                        values: [`1folder`, `2folder`]
+                    }
+                }
+            });
+            expect(count).to.equal(2);
+        });
     });
 
     describe(`static updateByQuery()`, () => {
