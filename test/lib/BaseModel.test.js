@@ -2301,18 +2301,20 @@ describe(`BaseModel class`, function() {
     });
 
     describe(`getMapping`, () => {
-        it(`can't get mapping of index with wildcard`, async () => {
-            const MyRevisions = createClass(`users`); //tenant is *
-
-            await expect(MyRevisions.getMapping()).to.be.eventually.rejectedWith(`You cannot use 'getMapping' with current tenant '*', full index is '*_users'!`);
-        });
-
         it(`gets mapping of index`, async () => {
             const MyRevisions = createClass(`users`).in(`test`);
 
             const mapping = await MyRevisions.getMapping();
             expect(mapping).to.be.an(`object`);
             expect(mapping.test_users).to.be.an(`object`);
+            expect(mapping.test_users.mappings).to.be.an(`object`);
+        });
+
+        it(`gets mapping of multiple indexes`, async () => {
+            const MyDocuments = createClass(`documents`).type(`*`);
+
+            const mapping = await MyDocuments.getSettings();
+            expect(Object.keys(mapping).length > 1);
         });
     });
 
@@ -2320,7 +2322,7 @@ describe(`BaseModel class`, function() {
         it(`can't put mapping to index with wildcard`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.getMapping()).to.be.eventually.rejectedWith(`You cannot use 'getMapping' with current tenant '*', full index is '*_revisions_test_form'!`);
+            await expect(MyRevisions.putMapping()).to.be.eventually.rejectedWith(`You cannot use 'putMapping' with current tenant '*', full index is '*_revisions_test_form'!`);
         });
 
         it(`puts mapping to index`, async () => {
@@ -2343,6 +2345,74 @@ describe(`BaseModel class`, function() {
                 index: `test_revisions_test_form`
             });
             expect(response.body.test_revisions_test_form.mappings.properties.test.type).to.equal(`text`);
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions_test_form`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`getSettings`, () => {
+        it(`gets settings of index`, async () => {
+            const MyUsers = createClass(`users`).in(`test`);
+
+            const settings = await MyUsers.getSettings();
+            expect(settings).to.be.an(`object`);
+            expect(settings.test_users).to.be.an(`object`);
+            expect(settings.test_users.settings).to.be.an(`object`);
+        });
+
+        it(`gets settings of index with default settings included`, async () => {
+            const MyUsers = createClass(`users`).in(`test`);
+
+            const settings = await MyUsers.getSettings(true);
+            expect(settings).to.be.an(`object`);
+            expect(settings.test_users).to.be.an(`object`);
+            expect(settings.test_users.settings).to.be.an(`object`);
+            expect(settings.test_users.defaults).to.be.an(`object`);
+        });
+
+        it(`gets settings of multiple indexes`, async () => {
+            const MyDocuments = createClass(`documents`).type(`*`);
+
+            const settings = await MyDocuments.getSettings();
+            expect(Object.keys(settings).length > 1);
+        });
+    });
+
+    describe(`putSettings`, () => {
+        it(`can't put settings to index with wildcard`, async () => {
+            const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
+
+            await expect(MyRevisions.putSettings()).to.be.eventually.rejectedWith(`You cannot use 'putSettings' with current tenant '*', full index is '*_revisions_test_form'!`);
+        });
+
+        it(`puts settings to index`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_test_form`
+            });
+
+            const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+
+            const originalSettings = await MyRevisions.getSettings(true);
+            expect(originalSettings.test_revisions_test_form.settings.index.number_of_replicas).to.equal(`1`);
+            expect(originalSettings.test_revisions_test_form.settings.index.flush_after_merge).to.be.undefined;
+
+            const settings = {
+                number_of_replicas: 2,
+                flush_after_merge: `1024mb`
+            };
+            await MyRevisions.putSettings(settings);
+
+            const newSettings = await MyRevisions.getSettings(true);
+            expect(newSettings.test_revisions_test_form.settings.index.number_of_replicas).to.equal(`2`);
+            expect(newSettings.test_revisions_test_form.settings.index.flush_after_merge).to.equal(`1024mb`);
         });
 
         afterEach(async () => {
