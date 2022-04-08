@@ -15,23 +15,29 @@ const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
  */
 
 /**
- * @param index         {string}
+ * @param name          {string}
  * @param schema        {Joi | void}
- * @param indexType     {string}
+ * @param type          {string}
  * @param tenant        {string}
  * @returns             {BaseModelType}
  */
-function createClass(index, schema = Joi.object(), indexType = ``, tenant = `*`) {
-    if (_.isNil(index) || !_.isString(index) || _.isEmpty(index)) {
-        throw Error(`You have to specify an index.`);
+function createClass(name, schema = Joi.object(), type = ``, tenant = `*`) {
+    if (_.isNil(name) || !_.isString(name) || _.isEmpty(name)) {
+        throw Error(`You have to specify an index name.`);
+    } else if (_.isNil(tenant) || !_.isString(tenant) || _.isEmpty(tenant)) {
+        throw Error(`Tenant cannot be empty.`);
+    } else if (tenant.includes(`_`)) {
+        throw Error(`Tenant cannot contain underscore.`);
     }
 
     const properties = {
         __schema: schema,
 
         _tenant: tenant,
-        _index: index,
-        _indexType: indexType
+        _name: name,
+        _type: type,
+
+        _immediateRefresh: true
     };
 
     // Creates new class extended from {BaseModel}

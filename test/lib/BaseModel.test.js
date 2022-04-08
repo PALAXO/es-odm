@@ -9,39 +9,54 @@ describe(`BaseModel class`, function() {
     this.timeout(testTimeout);
 
     describe(`class preparations`, () => {
-        it(`can't create class without index`, async () => {
-            expect(() => createClass()).to.throw(`You have to specify an index.`);
+        it(`can't create class without index name`, async () => {
+            expect(() => createClass()).to.throw(`You have to specify an index name.`);
+        });
+
+        it(`can't create class with empty tenant or with an underscore within a tenant`, async () => {
+            expect(() => createClass(`myIndex`, void 0, void 0, ``)).to.throw(`Tenant cannot be empty.`);
+
+            expect(() => createClass(`myIndex`, void 0, void 0, `test_test`)).to.throw(`Tenant cannot contain underscore.`);
+            expect(() => createClass(`myIndex`, void 0, void 0, `_`)).to.throw(`Tenant cannot contain underscore.`);
+            expect(() => createClass(`myIndex`, void 0, void 0, `test_`)).to.throw(`Tenant cannot contain underscore.`);
+            expect(() => createClass(`myIndex`, void 0, void 0, `_test`)).to.throw(`Tenant cannot contain underscore.`);
+
+            const myClass = createClass(`myIndex`, void 0);
+            expect(() => myClass.in(``)).to.throw(`Tenant must be a string!`);
+            expect(() => myClass.in(`_`)).to.throw(`Tenant cannot contain underscore.`);
+            expect(() => myClass.in(`test_`)).to.throw(`Tenant cannot contain underscore.`);
+            expect(() => myClass.in(`_test`)).to.throw(`Tenant cannot contain underscore.`);
         });
 
         it(`creates new class`, async () => {
             const myClass = createClass(`myIndex`);
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass._tenant).to.equal(`*`);
-            expect(myClass._indexType).to.equal(``);
+            expect(myClass._type).to.equal(``);
 
-            expect(myClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(myClass._alias).to.equal(`*_myIndex`);
         });
 
         it(`creates new class with schema`, async () => {
             const schema = Joi.object().keys({}).required();
             const myClass = createClass(`myIndex`, schema);
             expect(myClass._tenant).to.equal(`*`);
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
-            expect(myClass._indexType).to.equal(``);
+            expect(myClass._type).to.equal(``);
 
-            expect(myClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(myClass._alias).to.equal(`*_myIndex`);
         });
 
         it(`creates new class with schema and type`, async () => {
             const schema = Joi.object().keys({}).required();
             const myClass = createClass(`myIndex`, schema, `myType`);
             expect(myClass._tenant).to.equal(`*`);
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
-            expect(myClass._indexType).to.equal(`myType`);
+            expect(myClass._type).to.equal(`myType`);
 
-            expect(myClass.__fullIndex).to.equal(`*_myIndex_myType`);
+            expect(myClass._alias).to.equal(`*_myIndex_myType`);
         });
 
         it(`creates new class and rewrites tenant`, async () => {
@@ -52,38 +67,38 @@ describe(`BaseModel class`, function() {
             };
             originalClass.x = `:)`;
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex_myType`);
+            expect(originalClass._alias).to.equal(`*_myIndex_myType`);
             expect(originalClass.myFunction()).to.equal(`*`);
 
             const myClass = originalClass.in(`myTenant`);
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex_myType`);
+            expect(originalClass._alias).to.equal(`*_myIndex_myType`);
             expect(originalClass.myFunction()).to.equal(`*`);
             expect(myClass._tenant).to.equal(`myTenant`);
-            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass._alias).to.equal(`myTenant_myIndex_myType`);
             expect(myClass.myFunction()).to.equal(`myTenant`);
 
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
-            expect(myClass._indexType).to.equal(`myType`);
+            expect(myClass._type).to.equal(`myType`);
         });
 
         it(`creates new class and rewrites tenant and type`, async () => {
             const schema = Joi.object().keys({}).required();
             const originalClass = createClass(`myIndex`, schema);
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass._indexType).to.equal(``);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(originalClass._type).to.equal(``);
+            expect(originalClass._alias).to.equal(`*_myIndex`);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass._indexType).to.equal(``);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(originalClass._type).to.equal(``);
+            expect(originalClass._alias).to.equal(`*_myIndex`);
             expect(myClass._tenant).to.equal(`myTenant`);
-            expect(myClass._indexType).to.equal(`myType`);
-            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass._type).to.equal(`myType`);
+            expect(myClass._alias).to.equal(`myTenant_myIndex_myType`);
 
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
         });
 
@@ -91,29 +106,29 @@ describe(`BaseModel class`, function() {
             const schema = Joi.object().keys({}).required();
             const originalClass = createClass(`myIndex`, schema);
             originalClass.myFunction = function () {
-                return this._indexType;
+                return this._type;
             };
 
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass._indexType).to.equal(``);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(originalClass._type).to.equal(``);
+            expect(originalClass._alias).to.equal(`*_myIndex`);
             expect(originalClass.myFunction).not.to.be.undefined;
             expect(originalClass.myFunction()).to.equal(``);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass._indexType).to.equal(``);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(originalClass._type).to.equal(``);
+            expect(originalClass._alias).to.equal(`*_myIndex`);
             expect(originalClass.myFunction).not.to.be.undefined;
             expect(originalClass.myFunction()).to.equal(``);
 
             expect(myClass._tenant).to.equal(`myTenant`);
-            expect(myClass._indexType).to.equal(`myType`);
-            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass._type).to.equal(`myType`);
+            expect(myClass._alias).to.equal(`myTenant_myIndex_myType`);
             expect(myClass.myFunction).not.to.be.undefined;
             expect(myClass.myFunction()).to.equal(`myType`);
 
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
         });
 
@@ -125,25 +140,25 @@ describe(`BaseModel class`, function() {
             };
 
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass._indexType).to.equal(``);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(originalClass._type).to.equal(``);
+            expect(originalClass._alias).to.equal(`*_myIndex`);
             expect(originalClass.find).not.to.be.undefined;
             expect(originalClass.find()).to.equal(`*`);
 
             const myClass = originalClass.in(`myTenant`).type(`myType`);
             expect(originalClass._tenant).to.equal(`*`);
-            expect(originalClass._indexType).to.equal(``);
-            expect(originalClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(originalClass._type).to.equal(``);
+            expect(originalClass._alias).to.equal(`*_myIndex`);
             expect(originalClass.find).not.to.be.undefined;
             expect(originalClass.find()).to.equal(`*`);
 
             expect(myClass._tenant).to.equal(`myTenant`);
-            expect(myClass._indexType).to.equal(`myType`);
-            expect(myClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(myClass._type).to.equal(`myType`);
+            expect(myClass._alias).to.equal(`myTenant_myIndex_myType`);
             expect(myClass.find).not.to.be.undefined;
             expect(myClass.find()).to.equal(`*`);
 
-            expect(myClass._index).to.equal(`myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
         });
 
@@ -152,9 +167,9 @@ describe(`BaseModel class`, function() {
             const originalClass = createClass(`myIndex`, schema).type(`myType`).in(`myTenant`);
 
             expect(originalClass._tenant).to.equal(`myTenant`);
-            expect(originalClass._index).to.equal(`myIndex`);
-            expect(originalClass._indexType).to.equal(`myType`);
-            expect(originalClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(originalClass._name).to.equal(`myIndex`);
+            expect(originalClass._type).to.equal(`myType`);
+            expect(originalClass._alias).to.equal(`myTenant_myIndex_myType`);
             expect(originalClass.newProperty).to.be.undefined;
             expect(originalClass.anotherProperty).to.be.undefined;
             expect(originalClass.newFunction).to.be.undefined;
@@ -165,28 +180,28 @@ describe(`BaseModel class`, function() {
                 newFunction: function() {
                     return `newFunction`;
                 },
-                _indexType: `rewrittenType`
+                _type: `rewrittenType`
             };
             const clonedClass = originalClass.clone(changes);
             clonedClass.anotherProperty = `another`;
             clonedClass.anotherFunction = function() {
                 return `anotherFunction`;
             };
-            clonedClass._index = `rewrittenIndex`;
+            clonedClass._name = `rewrittenIndex`;
 
             expect(originalClass._tenant).to.equal(`myTenant`);
-            expect(originalClass._index).to.equal(`myIndex`);
-            expect(originalClass._indexType).to.equal(`myType`);
-            expect(originalClass.__fullIndex).to.equal(`myTenant_myIndex_myType`);
+            expect(originalClass._name).to.equal(`myIndex`);
+            expect(originalClass._type).to.equal(`myType`);
+            expect(originalClass._alias).to.equal(`myTenant_myIndex_myType`);
             expect(originalClass.newProperty).to.be.undefined;
             expect(originalClass.anotherProperty).to.be.undefined;
             expect(originalClass.newFunction).to.be.undefined;
             expect(originalClass.anotherFunction).to.be.undefined;
 
             expect(clonedClass._tenant).to.equal(`myTenant`);
-            expect(clonedClass._index).to.equal(`rewrittenIndex`);
-            expect(clonedClass._indexType).to.equal(`rewrittenType`);
-            expect(clonedClass.__fullIndex).to.equal(`myTenant_rewrittenIndex_rewrittenType`);
+            expect(clonedClass._name).to.equal(`rewrittenIndex`);
+            expect(clonedClass._type).to.equal(`rewrittenType`);
+            expect(clonedClass._alias).to.equal(`myTenant_rewrittenIndex_rewrittenType`);
             expect(clonedClass.newProperty).to.equal(`new`);
             expect(clonedClass.anotherProperty).to.equal(`another`);
             expect(clonedClass.newFunction()).to.equal(`newFunction`);
@@ -197,33 +212,33 @@ describe(`BaseModel class`, function() {
             const schema = Joi.object().keys({}).required();
             let myClass = createClass(`myIndex`, schema);
             expect(myClass._tenant).to.equal(`*`);
-            expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass._indexType).to.equal(``);
-            expect(myClass.__fullIndex).to.equal(`*_myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
+            expect(myClass._type).to.equal(``);
+            expect(myClass._alias).to.equal(`*_myIndex`);
 
             myClass = myClass.in(`test`);
             expect(myClass._tenant).to.equal(`test`);
-            expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass._indexType).to.equal(``);
-            expect(myClass.__fullIndex).to.equal(`test_myIndex`);
+            expect(myClass._name).to.equal(`myIndex`);
+            expect(myClass._type).to.equal(``);
+            expect(myClass._alias).to.equal(`test_myIndex`);
 
             myClass = myClass.type(`typ`);
             expect(myClass._tenant).to.equal(`test`);
-            expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass._indexType).to.equal(`typ`);
-            expect(myClass.__fullIndex).to.equal(`test_myIndex_typ`);
+            expect(myClass._name).to.equal(`myIndex`);
+            expect(myClass._type).to.equal(`typ`);
+            expect(myClass._alias).to.equal(`test_myIndex_typ`);
 
-            myClass = myClass.in(``);
-            expect(myClass._tenant).to.equal(``);
-            expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass._indexType).to.equal(`typ`);
-            expect(myClass.__fullIndex).to.equal(`myIndex_typ`);
+            myClass = myClass.in(`another`);
+            expect(myClass._tenant).to.equal(`another`);
+            expect(myClass._name).to.equal(`myIndex`);
+            expect(myClass._type).to.equal(`typ`);
+            expect(myClass._alias).to.equal(`another_myIndex_typ`);
 
             myClass = myClass.type(``);
-            expect(myClass._tenant).to.equal(``);
-            expect(myClass._index).to.equal(`myIndex`);
-            expect(myClass._indexType).to.equal(``);
-            expect(myClass.__fullIndex).to.equal(`myIndex`);
+            expect(myClass._tenant).to.equal(`another`);
+            expect(myClass._name).to.equal(`myIndex`);
+            expect(myClass._type).to.equal(``);
+            expect(myClass._alias).to.equal(`another_myIndex`);
         });
     });
 
@@ -295,7 +310,7 @@ describe(`BaseModel class`, function() {
             for (let i = 0; i < size; i++) {
                 bulk.push({
                     index: {
-                        _index: MyClass.__fullIndex,
+                        _index: MyClass._alias,
                         _id: `id_${i}`
                     }
                 });
@@ -417,18 +432,6 @@ describe(`BaseModel class`, function() {
             expect(results._total).to.equal(0);
         });
 
-        it(`won't find anything when searches using empty tenant`, async () => {
-            const MyClass = createClass(`documents`, void 0, `*`).in(``);
-            const results = await MyClass.search({
-                query: {
-                    match_all: {}
-                }
-            });
-
-            expect(results.length).to.equal(0);
-            expect(results._total).to.equal(0);
-        });
-
         it(`searches for all documents`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`);
             const results = await MyClass.search({
@@ -444,7 +447,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and tenant and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 expect(result.constructor._tenant).to.equal(`test`);
                 expect(result._score).to.be.a(`number`);
                 await result.save();
@@ -466,7 +469,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and tenant and can save
-                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._type).to.equal(indexType);
                 expect(result.constructor._tenant).to.equal(`test`);
                 expect(result._score).to.be.a(`number`);
                 await result.save();
@@ -541,7 +544,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
@@ -562,7 +565,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
@@ -582,7 +585,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -602,7 +605,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -621,7 +624,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -642,7 +645,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -663,7 +666,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -683,7 +686,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -710,7 +713,7 @@ describe(`BaseModel class`, function() {
             for (let i = 0; i < size; i++) {
                 bulk.push({
                     index: {
-                        _index: MyClass.__fullIndex,
+                        _index: MyClass._alias,
                         _id: `id_${`00000${i}`.substr(-5)}`
                     }
                 });
@@ -771,7 +774,7 @@ describe(`BaseModel class`, function() {
             for (let i = 0; i < size; i++) {
                 bulk.push({
                     index: {
-                        _index: MyClass.__fullIndex,
+                        _index: MyClass._alias,
                         _id: `id_${`00000${i}`.substr(-5)}`
                     }
                 });
@@ -836,7 +839,7 @@ describe(`BaseModel class`, function() {
             for (let i = 0; i < size; i++) {
                 bulk.push({
                     index: {
-                        _index: MyClass.__fullIndex,
+                        _index: MyClass._alias,
                         _id: `id_${`00000${i}`.substr(-5)}`
                     }
                 });
@@ -916,7 +919,7 @@ describe(`BaseModel class`, function() {
             for (let i = 0; i < size; i++) {
                 bulk.push({
                     index: {
-                        _index: MyClass.__fullIndex,
+                        _index: MyClass._alias,
                         _id: `id_${`00000${i}`.substr(-5)}`
                     }
                 });
@@ -1095,7 +1098,7 @@ describe(`BaseModel class`, function() {
                 expect(result._score).to.be.a(`number`);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.not.equal(`*`);
+                expect(result.constructor._type).to.not.equal(`*`);
                 await result.save();
             }
         });
@@ -1115,7 +1118,7 @@ describe(`BaseModel class`, function() {
                 expect(result._score).to.be.a(`number`);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._type).to.equal(indexType);
                 expect(result.constructor._tenant).to.equal(`test`);
                 await result.save();
             }
@@ -1257,7 +1260,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._type).to.equal(indexType);
                 await result.save();
             }
         });
@@ -1276,7 +1279,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._type).to.equal(indexType);
                 await result.save();
             }
         });
@@ -1294,7 +1297,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(`folder`);
+                expect(result.constructor._type).to.equal(`folder`);
                 await result.save();
             }
         });
@@ -1377,12 +1380,12 @@ describe(`BaseModel class`, function() {
 
         it(`can't get without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current index type '*', full index is 'test_documents_*'!`);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current type '*', full alias is 'test_documents_*'!`);
         });
 
         it(`can't get without specifying tenant`, async () => {
             const MyClass = createClass(`documents`, void 0);
-            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current tenant '*', full index is '*_documents'!`);
+            await expect(MyClass.get([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'get' with current tenant '*', full alias is '*_documents'!`);
         });
 
         it(`can't get not-existing id`, async () => {
@@ -1444,7 +1447,7 @@ describe(`BaseModel class`, function() {
                 expect(possibleValues).to.include(result.html);
 
                 //correct type and can save
-                expect(result.constructor._indexType).to.equal(indexType);
+                expect(result.constructor._type).to.equal(indexType);
                 await result.save();
             }
         });
@@ -1527,7 +1530,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't delete without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current index type '*', full index is 'test_documents_*'!`);
+            await expect(MyClass.delete([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'delete' with current type '*', full alias is 'test_documents_*'!`);
         });
 
         it(`can't delete multiple ids when version is specified`, async () => {
@@ -1722,7 +1725,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't check without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current index type '*', full index is 'test_documents_*'!`);
+            await expect(MyClass.exists([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'exists' with current type '*', full alias is 'test_documents_*'!`);
         });
 
         it(`checks not-existing id`, async () => {
@@ -1845,7 +1848,7 @@ describe(`BaseModel class`, function() {
 
         it(`can't update without specifying type`, async () => {
             const MyClass = createClass(`documents`, void 0, `*`).in(`test`);
-            await expect(MyClass.update([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'update' with current index type '*', full index is 'test_documents_*'!`);
+            await expect(MyClass.update([folderDocument1.id, folderDocument2.id])).to.be.eventually.rejectedWith(`You cannot use 'update' with current type '*', full alias is 'test_documents_*'!`);
         });
 
         it(`can't update without body specified`, async () => {
@@ -2213,7 +2216,7 @@ describe(`BaseModel class`, function() {
         it(`can't create index with wildcard in index`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.createIndex()).to.be.eventually.rejectedWith(`You cannot use 'createIndex' with current tenant '*', full index is '*_revisions_test_form'!`);
+            await expect(MyRevisions.createIndex()).to.be.eventually.rejectedWith(`You cannot use 'createIndex' with current tenant '*', full alias is '*_revisions_test_form'!`);
         });
 
         it(`creates new index`, async () => {
@@ -2222,7 +2225,7 @@ describe(`BaseModel class`, function() {
             await MyRevisions.createIndex();
 
             const exists = await bootstrapTest.client.indices.exists({
-                index: MyRevisions.__fullIndex
+                index: MyRevisions._alias
             });
             expect(exists.body).to.be.true;
         });
@@ -2230,7 +2233,7 @@ describe(`BaseModel class`, function() {
         afterEach(async () => {
             try {
                 await bootstrapTest.client.indices.delete({
-                    index: `test_revisions_test_form`
+                    index: `test_revisions-*_test_form`
                 });
             } catch (e) {
                 //OK
@@ -2239,17 +2242,20 @@ describe(`BaseModel class`, function() {
     });
 
     describe(`indexExists`, () => {
+        const uuid = `abc123`;
+
+        beforeEach(async () => {
+            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await _createIndex(`test_revisions_test_form`, uuid);
+        });
+
         it(`can't check index with wildcard in index`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.indexExists()).to.be.eventually.rejectedWith(`You cannot use 'indexExists' with current tenant '*', full index is '*_revisions_test_form'!`);
+            await expect(MyRevisions.indexExists()).to.be.eventually.rejectedWith(`You cannot use 'indexExists' with current tenant '*', full alias is '*_revisions_test_form'!`);
         });
 
         it(`checks if index exists`, async () => {
-            await bootstrapTest.client.indices.create({
-                index: `test_revisions_test_form`
-            });
-
             const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
 
             const exists = await MyRevisions.indexExists();
@@ -2257,46 +2263,37 @@ describe(`BaseModel class`, function() {
         });
 
         afterEach(async () => {
-            try {
-                await bootstrapTest.client.indices.delete({
-                    index: `test_revisions_test_form`
-                });
-            } catch (e) {
-                //OK
-            }
+            await _deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
     describe(`deleteIndex`, () => {
+        const uuid = `abc123`;
+
+        beforeEach(async () => {
+            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await _createIndex(`test_revisions_test_form`, uuid);
+        });
+
         it(`can't delete index with wildcard in index`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.deleteIndex()).to.be.eventually.rejectedWith(`You cannot use 'deleteIndex' with current tenant '*', full index is '*_revisions_test_form'!`);
+            await expect(MyRevisions.deleteIndex()).to.be.eventually.rejectedWith(`You cannot use 'deleteIndex' with current tenant '*', full alias is '*_revisions_test_form'!`);
         });
 
         it(`deletes index`, async () => {
-            await bootstrapTest.client.indices.create({
-                index: `test_revisions_test_form`
-            });
-
             const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
 
             await MyRevisions.deleteIndex();
 
             const exists = await bootstrapTest.client.indices.exists({
-                index: MyRevisions.__fullIndex
+                index: MyRevisions._alias
             });
             expect(exists.body).to.be.false;
         });
 
         afterEach(async () => {
-            try {
-                await bootstrapTest.client.indices.delete({
-                    index: `test_revisions_test_form`
-                });
-            } catch (e) {
-                //OK
-            }
+            await _deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
@@ -2319,17 +2316,20 @@ describe(`BaseModel class`, function() {
     });
 
     describe(`putMapping`, () => {
-        it(`can't put mapping to index with wildcard`, async () => {
+        const uuid = `abc123`;
+
+        beforeEach(async () => {
+            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await _createIndex(`test_revisions_test_form`, uuid);
+        });
+
+        it(`can't send empty mapping`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.putMapping()).to.be.eventually.rejectedWith(`You cannot use 'putMapping' with current tenant '*', full index is '*_revisions_test_form'!`);
+            await expect(MyRevisions.putMapping()).to.be.eventually.rejectedWith(`You have to specify mapping object.`);
         });
 
         it(`puts mapping to index`, async () => {
-            await bootstrapTest.client.indices.create({
-                index: `test_revisions_test_form`
-            });
-
             const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
 
             const mapping = {
@@ -2344,17 +2344,11 @@ describe(`BaseModel class`, function() {
             const response = await bootstrapTest.client.indices.getMapping({
                 index: `test_revisions_test_form`
             });
-            expect(response.body.test_revisions_test_form.mappings.properties.test.type).to.equal(`text`);
+            expect(Object.values(response.body)[0].mappings.properties.test.type).to.equal(`text`);
         });
 
         afterEach(async () => {
-            try {
-                await bootstrapTest.client.indices.delete({
-                    index: `test_revisions_test_form`
-                });
-            } catch (e) {
-                //OK
-            }
+            await _deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
@@ -2387,22 +2381,25 @@ describe(`BaseModel class`, function() {
     });
 
     describe(`putSettings`, () => {
-        it(`can't put settings to index with wildcard`, async () => {
+        const uuid = `abc123`;
+
+        beforeEach(async () => {
+            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await _createIndex(`test_revisions_test_form`, uuid);
+        });
+
+        it(`can't send empty settings`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.putSettings()).to.be.eventually.rejectedWith(`You cannot use 'putSettings' with current tenant '*', full index is '*_revisions_test_form'!`);
+            await expect(MyRevisions.putSettings()).to.be.eventually.rejectedWith(`You have to specify settings object.`);
         });
 
         it(`puts settings to index`, async () => {
-            await bootstrapTest.client.indices.create({
-                index: `test_revisions_test_form`
-            });
-
             const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
 
             const originalSettings = await MyRevisions.getSettings(true);
-            expect(originalSettings.test_revisions_test_form.settings.index.number_of_replicas).to.equal(`1`);
-            expect(originalSettings.test_revisions_test_form.settings.index.flush_after_merge).to.be.undefined;
+            expect(Object.values(originalSettings)[0].settings.index.number_of_replicas).to.equal(`1`);
+            expect(Object.values(originalSettings)[0].settings.index.flush_after_merge).to.be.undefined;
 
             const settings = {
                 number_of_replicas: 2,
@@ -2411,18 +2408,12 @@ describe(`BaseModel class`, function() {
             await MyRevisions.putSettings(settings);
 
             const newSettings = await MyRevisions.getSettings(true);
-            expect(newSettings.test_revisions_test_form.settings.index.number_of_replicas).to.equal(`2`);
-            expect(newSettings.test_revisions_test_form.settings.index.flush_after_merge).to.equal(`1024mb`);
+            expect(Object.values(newSettings)[0].settings.index.number_of_replicas).to.equal(`2`);
+            expect(Object.values(newSettings)[0].settings.index.flush_after_merge).to.equal(`1024mb`);
         });
 
         afterEach(async () => {
-            try {
-                await bootstrapTest.client.indices.delete({
-                    index: `test_revisions_test_form`
-                });
-            } catch (e) {
-                //OK
-            }
+            await _deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
@@ -2437,14 +2428,14 @@ describe(`BaseModel class`, function() {
             const MyRevisionsSource = createClass(`revisions`).type(`from`); //tenant is *
             const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
 
-            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-source' with current tenant '*', full index is '*_revisions_from'!`);
+            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-source' with current tenant '*', full alias is '*_revisions_from'!`);
         });
 
         it(`can't reindex index with wildcard in destination index`, async () => {
             const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
             const MyRevisionsDestination = createClass(`revisions`).type(`to`); //tenant is *
 
-            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-destination' with current tenant '*', full index is '*_revisions_to'!`);
+            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-destination' with current tenant '*', full alias is '*_revisions_to'!`);
         });
 
         it(`reindexes models`, async () => {
@@ -2459,7 +2450,7 @@ describe(`BaseModel class`, function() {
             const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
 
             await bootstrapTest.client.index({
-                index: MyRevisionsSource.__fullIndex,
+                index: MyRevisionsSource._alias,
                 id: `test`,
                 body: {
                     status: `:)`
@@ -2470,7 +2461,7 @@ describe(`BaseModel class`, function() {
             await MyRevisionsSource.reindex(MyRevisionsDestination);
 
             const results = await bootstrapTest.client.search({
-                index: MyRevisionsDestination.__fullIndex,
+                index: MyRevisionsDestination._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2479,7 +2470,7 @@ describe(`BaseModel class`, function() {
                 version: true
             });
             expect(results.body.hits.hits.length).to.equal(1);
-            expect(results.body.hits.hits[0]._index).to.equal(MyRevisionsDestination.__fullIndex);
+            expect(results.body.hits.hits[0]._index).to.equal(MyRevisionsDestination._alias);
             expect(results.body.hits.hits[0]._id).to.equal(`test`);
             expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
         });
@@ -2545,7 +2536,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2573,7 +2564,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2602,7 +2593,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2631,7 +2622,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2674,7 +2665,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance._seq_no).to.not.equal(oldSeqNo);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2723,7 +2714,7 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
 
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance._id,
                 body: {
                     status: `:(`
@@ -2795,7 +2786,7 @@ describe(`BaseModel class`, function() {
             const oldScore = myInstance._score;
 
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: `ok`,
                 body: {
                     status: `:D`,
@@ -2864,7 +2855,7 @@ describe(`BaseModel class`, function() {
             expect(myInstance.fullname).to.equal(`abc def`);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2889,7 +2880,7 @@ describe(`BaseModel class`, function() {
             await myInstance.delete(true);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -2912,7 +2903,7 @@ describe(`BaseModel class`, function() {
             await myInstance.save();
 
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance._id,
                 body: {
                     status: `:(`
@@ -2939,7 +2930,7 @@ describe(`BaseModel class`, function() {
             await myInstance.delete(true);
 
             const results = await bootstrapTest.client.search({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 body: {
                     query: {
                         match_all: {}
@@ -3049,4 +3040,43 @@ describe(`BaseModel class`, function() {
             expect(clone.fullname).to.equal(`abc def`);
         });
     });
+
+    async function _createIndex(alias, uuid) {
+        const indexParts = alias.split(`_`);
+        indexParts[1] += `-${uuid}`;
+        const index = indexParts.join(`_`);
+
+        await bootstrapTest.client.indices.create({
+            index: index
+        });
+        await bootstrapTest.client.indices.putAlias({
+            index: index,
+            name: alias,
+            body: {
+                is_write_index: true
+            }
+        });
+    }
+
+    async function _deleteIndex(alias, uuid) {
+        const indexParts = alias.split(`_`);
+        indexParts[1] += `-${uuid}`;
+        const index = indexParts.join(`_`);
+
+        try {
+            await bootstrapTest.client.indices.delete({
+                index: index
+            });
+        } catch (e) {
+            //OK
+        }
+        try {
+            await bootstrapTest.client.indices.deleteAlias({
+                index: index,
+                name: alias,
+            });
+        } catch (e) {
+            //OK
+        }
+    }
 });

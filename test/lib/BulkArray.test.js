@@ -98,7 +98,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance1._primary_term).not.to.be.undefined;
             expect(myInstance1._seq_no).not.to.be.undefined;
             const results1 = await bootstrapTest.client.get({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance1._id
             });
             expect(results1.body._version).to.equal(myInstance1._version);
@@ -113,7 +113,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance2._primary_term).not.to.be.undefined;
             expect(myInstance2._seq_no).not.to.be.undefined;
             const results2 = await bootstrapTest.client.get({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance2._id
             });
             expect(results2.body._version).to.equal(myInstance2._version);
@@ -165,7 +165,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance1._primary_term).not.to.be.undefined;
             expect(myInstance1._seq_no).not.to.be.undefined;
             const results1 = await bootstrapTest.client.get({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance1._id
             });
             expect(results1.body._id).to.equal(`first`);
@@ -181,7 +181,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance2._primary_term).not.to.be.undefined;
             expect(myInstance2._seq_no).not.to.be.undefined;
             const results2 = await bootstrapTest.client.get({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance2._id
             });
             expect(results2.body._version).to.equal(myInstance2._version);
@@ -196,7 +196,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance3._primary_term).not.to.be.undefined;
             expect(myInstance3._seq_no).not.to.be.undefined;
             const results3 = await bootstrapTest.client.get({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance3._id
             });
             expect(results3.body._id).to.equal(`third`);
@@ -257,7 +257,7 @@ describe(`BulkArray class`, function() {
             await myInstance.save();
 
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance._id,
                 body: {
                     status: `:(`
@@ -311,7 +311,7 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, savedInstance._id, savedInstance._version + 1);
 
             const bulk = new BulkArray(myInstance);
-            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' at index '${savedInstance.constructor.__fullIndex}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
+            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' in alias '${savedInstance.constructor._alias}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
         });
     });
 
@@ -393,19 +393,19 @@ describe(`BulkArray class`, function() {
             expect(results.items[2].delete.result).to.equal(`deleted`);
 
             const results1 = await bootstrapTest.client.exists({
-                index: myInstance1.constructor.__fullIndex,
+                index: myInstance1.constructor._alias,
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
 
             const results2 = await bootstrapTest.client.exists({
-                index: myInstance2.constructor.__fullIndex,
+                index: myInstance2.constructor._alias,
                 id: myInstance2._id
             });
             expect(results2.body).to.be.false;
 
             const results3 = await bootstrapTest.client.exists({
-                index: myInstance3.constructor.__fullIndex,
+                index: myInstance3.constructor._alias,
                 id: myInstance3._id
             });
             expect(results3.body).to.be.false;
@@ -426,7 +426,7 @@ describe(`BulkArray class`, function() {
             expect(results.items[1].delete.result).to.equal(`not_found`);
 
             const results1 = await bootstrapTest.client.exists({
-                index: myInstance1.constructor.__fullIndex,
+                index: myInstance1.constructor._alias,
                 id: myInstance1._id
             });
             expect(results1.body).to.be.false;
@@ -447,7 +447,7 @@ describe(`BulkArray class`, function() {
             await bulk.delete(true);
 
             const exists = await bootstrapTest.client.exists({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance._id
             });
             expect(exists.body).to.be.false;
@@ -465,7 +465,7 @@ describe(`BulkArray class`, function() {
             await myInstance.save();
 
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance._id,
                 body: {
                     status: `:(`
@@ -500,7 +500,7 @@ describe(`BulkArray class`, function() {
             await bulk.delete(true);
 
             const exists = await bootstrapTest.client.exists({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: myInstance._id
             });
             expect(exists.body).to.be.false;
@@ -520,7 +520,7 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, savedInstance._id, savedInstance._version + 1);
             const bulk = new BulkArray(myInstance);
 
-            await expect(bulk.delete(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' at index '${savedInstance.constructor.__fullIndex}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
+            await expect(bulk.delete(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' in alias '${savedInstance.constructor._alias}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
         });
     });
 
@@ -546,7 +546,7 @@ describe(`BulkArray class`, function() {
             const oldSeqNo2 = myInstance2._seq_no;
 
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: `ok`,
                 body: {
                     status: `:D`,
@@ -556,7 +556,7 @@ describe(`BulkArray class`, function() {
                 refresh: true
             });
             await bootstrapTest.client.index({
-                index: MyClass.__fullIndex,
+                index: MyClass._alias,
                 id: `ko`,
                 body: {
                     status: `:/`,

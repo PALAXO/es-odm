@@ -30,7 +30,7 @@
  - `const { createClass, BulkArray, BaseModel, setClient } = require('odm');`
  - `createClass` function creates new class
    - Each class contains several properties
-     - `_index`, `_indexType`, `_tenant`, `__schema`, `__fullIndex`
+     - `_name`, `_type`, `_tenant`, `__schema`, `__fullAlias`
    - Class static functions profit from those properties
      - eg. `static search()` uses them to get index
      - You may write your own static function, which will use those properties
@@ -39,7 +39,7 @@
        - Or redefine class properties
      - This way we can define model functions specific to each document type
    - Instances have access to those properties / functions
-     - `myInstance.constructor.__fullIndex`
+     - `myInstance.constructor.__fullAlias`
      - And they use them during ES operations
        - eq. to set correct index, validate data, ...
    - Whenever we need new / independent class, we must either create new one or clone existing one
@@ -164,8 +164,8 @@
 #### Functions / Methods
 
 ##### Internal getters
- - `static get __fullIndex()`
-   - Returns class full index, usable for ES queries
+ - `static get __fullAlias()`
+   - Returns class full alias, usable for ES queries
    - It consists of tenant, base index and index type
 
 ##### Class level API
