@@ -9,7 +9,7 @@ describe(`BulkArray class`, function() {
     this.timeout(testTimeout);
 
     describe(`class preparations`, () => {
-        it(`works like array`, () => {
+        it(`works like an array`, () => {
             const bulk = new BulkArray(`1`, `2`);
             expect(bulk).to.be.instanceOf(Array);
 
@@ -124,6 +124,41 @@ describe(`BulkArray class`, function() {
             expect(results2.body._source.fullname).to.equal(data2.fullname);
 
             expect(myInstance1._id).to.not.equal(myInstance2._id);
+        });
+
+        it(`saves data instances without immediate refresh`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1);
+
+            const data2 = {
+                status: `:(`,
+                name: `cde`,
+                fullname: `cde xyz`
+            };
+            const myInstance2 = new MyClass(data2);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            bulk._immediateRefresh = false;
+            const result = await bulk.save();
+
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(2);
+            expect(result.items[0].index.result).to.equal(`created`);
+            expect(result.items[1].index.result).to.equal(`created`);
+
+            const beforeRefresh = await MyClass.findAll();
+            expect(beforeRefresh.length).to.equal(0);
+
+            await MyClass.refresh();
+
+            const afterRefresh = await MyClass.findAll();
+            expect(afterRefresh.length).to.equal(2);
         });
 
         it(`saves data instance with some ids specified and saved`, async () => {

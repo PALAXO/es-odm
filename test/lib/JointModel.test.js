@@ -646,13 +646,15 @@ describe(`JointModel class`, function() {
             expect(results._total).to.equal(5);
             expect(results.aggregations.index.buckets.length).to.equal(3);
 
-            const userAggregations = results.aggregations.index.buckets.find((agg) => agg.key === UserClass._alias);
+            const [userIndex, folderIndex, documentIndex] = await Promise.all([UserClass.getIndex(), FolderClass.getIndex(), DocumentClass.getIndex()]);
+
+            const userAggregations = results.aggregations.index.buckets.find((agg) => agg.key === userIndex);
             expect(userAggregations.doc_count).to.equal(2);
 
-            const folderAggregations = results.aggregations.index.buckets.find((agg) => agg.key === FolderClass._alias);
+            const folderAggregations = results.aggregations.index.buckets.find((agg) => agg.key === folderIndex);
             expect(folderAggregations.doc_count).to.equal(2);
 
-            const documentAggregations = results.aggregations.index.buckets.find((agg) => agg.key === DocumentClass._alias);
+            const documentAggregations = results.aggregations.index.buckets.find((agg) => agg.key === documentIndex);
             expect(documentAggregations.doc_count).to.equal(1);
         });
     });

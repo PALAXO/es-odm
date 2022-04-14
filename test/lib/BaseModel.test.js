@@ -33,8 +33,9 @@ describe(`BaseModel class`, function() {
             expect(myClass._name).to.equal(`myIndex`);
             expect(myClass._tenant).to.equal(`*`);
             expect(myClass._type).to.equal(``);
-
             expect(myClass._alias).to.equal(`*_myIndex`);
+
+            expect(myClass._immediateRefresh).to.equal(true);
         });
 
         it(`creates new class with schema`, async () => {
@@ -100,6 +101,21 @@ describe(`BaseModel class`, function() {
 
             expect(myClass._name).to.equal(`myIndex`);
             expect(myClass.__schema).to.deep.equal(schema);
+        });
+
+        it(`creates new class and changes immediate refresh`, async () => {
+            const schema = Joi.object().keys({}).required();
+            const OriginalClass = createClass(`myIndex`, schema, `myType`);
+            expect(OriginalClass._immediateRefresh).to.equal(true);
+
+            const NewClass = OriginalClass.immediateRefresh(false);
+            expect(OriginalClass._immediateRefresh).to.equal(true);
+            expect(NewClass._immediateRefresh).to.equal(false);
+
+            const MyClass = NewClass.in(`myTenant`);
+            expect(OriginalClass._immediateRefresh).to.equal(true);
+            expect(NewClass._immediateRefresh).to.equal(false);
+            expect(MyClass._immediateRefresh).to.equal(false);
         });
 
         it(`preserves user defined functions`, async () => {
@@ -2212,7 +2228,17 @@ describe(`BaseModel class`, function() {
         });
     });
 
-    describe(`createIndex`, () => {
+    describe(`static createIndex()`, () => {
+        beforeEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions*`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+
         it(`can't create index with wildcard in index`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
@@ -2221,19 +2247,54 @@ describe(`BaseModel class`, function() {
 
         it(`creates new index`, async () => {
             const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
-
             await MyRevisions.createIndex();
 
-            const exists = await bootstrapTest.client.indices.exists({
+            const indexExists = await bootstrapTest.client.indices.exists({
                 index: MyRevisions._alias
             });
-            expect(exists.body).to.be.true;
+            expect(indexExists.body).to.be.true;
+
+            const aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyRevisions._alias
+            });
+            expect(aliasExists.body).to.be.true;
+
+            const realIndex = await MyRevisions.getIndex();
+            expect(realIndex).not.to.be.undefined;
+            expect(realIndex).not.to.equal(MyRevisions._alias);
+
+            const existingIndex = await bootstrapTest.client.indices.exists({
+                index: realIndex
+            });
+            expect(existingIndex.body).to.be.true;
+        });
+
+        it(`creates new index but it doesn't set an alias`, async () => {
+            const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+            await MyRevisions.createIndex(void 0, false);
+
+            const indexExists = await bootstrapTest.client.indices.exists({
+                index: MyRevisions._alias
+            });
+            expect(indexExists.body).to.be.false;
+
+            const aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyRevisions._alias
+            });
+            expect(aliasExists.body).to.be.false;
+
+            const existingIndices = await bootstrapTest.client.indices.stats({
+                index: `test_revisions-*_test_form`
+            });
+            expect(existingIndices?.body?.indices).to.be.an(`object`);
+            expect(Object.values(existingIndices.body.indices).length).to.equal(1);
+            expect(Object.values(existingIndices.body.indices)[0]).to.be.an(`object`);
         });
 
         afterEach(async () => {
             try {
                 await bootstrapTest.client.indices.delete({
-                    index: `test_revisions-*_test_form`
+                    index: `test_revisions*`
                 });
             } catch (e) {
                 //OK
@@ -2241,18 +2302,194 @@ describe(`BaseModel class`, function() {
         });
     });
 
-    describe(`indexExists`, () => {
+    describe(`static getIndex()`, () => {
+        beforeEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test_test`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+
+        it(`can't create index with wildcard in index`, async () => {
+            const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
+
+            await expect(MyRevisions.getIndex()).to.be.eventually.rejectedWith(`You cannot use 'getIndex' with current tenant '*', full alias is '*_revisions_test_form'!`);
+        });
+
+        it(`gets real index of existing index`, async () => {
+            const MyUsers = createClass(`users`).in(`test`);
+
+            const usersIndex = await MyUsers.getIndex();
+            expect(usersIndex).to.be.a(`string`);
+            expect(usersIndex).not.to.be.empty;
+            const usersIndexExists = await bootstrapTest.client.indices.exists({
+                index: usersIndex
+            });
+            expect(usersIndexExists.body).to.be.true;
+
+            const MyDocuments = createClass(`documents`).type(`d_default`).in(`test`);
+            const documentsIndex = await MyDocuments.getIndex();
+            expect(documentsIndex).to.be.a(`string`);
+            expect(documentsIndex).not.to.be.empty;
+            const documentsIndexExists = await bootstrapTest.client.indices.exists({
+                index: documentsIndex
+            });
+            expect(documentsIndexExists.body).to.be.true;
+        });
+
+        it(`doesn't return not existing index`, async () => {
+            const MyUsers = createClass(`test`).in(`test`);
+
+            const usersIndex = await MyUsers.getIndex();
+            expect(usersIndex).to.be.undefined;
+        });
+
+        it(`returns correct index even when we don't use aliases`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test_test`
+            });
+
+            const MyUsers = createClass(`test`).in(`test`).type(`test`);
+
+            const usersIndex = await MyUsers.getIndex();
+            expect(usersIndex).to.equal(MyUsers._alias);
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test_test`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`static aliasIndex()`, () => {
+        beforeEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test-abc_test`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+
+        it(`can't put an alias without index specified`, async () => {
+            const MyRevisions = createClass(`test`).type(`test`).in(`test`);
+
+            await expect(MyRevisions.aliasIndex()).to.be.eventually.rejectedWith(`You have to specify an index.`);
+        });
+
+        it(`can't put an alias when ODM contains wildcard`, async () => {
+            const MyRevisions = createClass(`test`).type(`test`); //tenant is *
+
+            await expect(MyRevisions.aliasIndex(`test`)).to.be.eventually.rejectedWith(`You cannot use 'aliasIndex' with current tenant '*', full alias is '*_test_test'!`);
+        });
+
+        it(`can't use incorrect index`, async () => {
+            const MyRevisions = createClass(`test`).type(`test`).in(`test`);
+
+            await expect(MyRevisions.aliasIndex(`a_test_c`)).to.be.eventually.rejectedWith(`You are specifying incorrect index. Your index transforms into alias 'a_test_c', ODM alias is 'test_test_test'.`);
+        });
+
+        it(`puts alias to an index`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test-abc_test`
+            });
+            const MyTest = createClass(`test`).type(`test`).in(`test`);
+
+            let aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyTest._alias
+            });
+            expect(aliasExists.body).to.be.false;
+
+            await MyTest.aliasIndex(`test_test-abc_test`);
+
+            aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyTest._alias
+            });
+            expect(aliasExists.body).to.be.true;
+        });
+
+        it(`can't put an existing alias to another index index`, async () => {
+            const MyUsers = createClass(`users`).in(`test`);
+            const existingIndex = await MyUsers.getIndex();
+
+            await expect(MyUsers.aliasIndex(existingIndex)).to.be.eventually.rejectedWith(`Alias 'test_users' is already used.`);
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test-abc_test`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`static deleteAlias()`, () => {
+        beforeEach(async () => {
+            await bootstrapTest.deleteIndex(`test_test_test`, `abc`);
+            await bootstrapTest.createIndex(`test_test_test`, `abc`);
+        });
+
+        it(`can't delete an alias when ODM contains wildcard`, async () => {
+            const MyRevisions = createClass(`test`).type(`test`);   //tenant is '*'
+
+            await expect(MyRevisions.deleteAlias()).to.be.eventually.rejectedWith(`You cannot use 'deleteAlias' with current tenant '*', full alias is '*_test_test'!`);
+        });
+
+        it(`deletes alias from an index`, async () => {
+            const MyTest = createClass(`test`).type(`test`).in(`test`);
+
+            let aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyTest._alias
+            });
+            expect(aliasExists.body).to.be.true;
+
+            await MyTest.deleteAlias();
+
+            aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyTest._alias
+            });
+            expect(aliasExists.body).to.be.false;
+        });
+
+        it(`can't delete alias when it doesn't exist`, async () => {
+            const MyTest = createClass(`test`).type(`test`).in(`test`);
+            await bootstrapTest.client.indices.deleteAlias({
+                index: `test_test-abc_test`,
+                name: `test_test_test`
+            });
+
+            await expect(MyTest.deleteAlias()).to.be.eventually.rejectedWith(`Alias 'test_test_test' doesn't exist.`);
+        });
+
+        afterEach(async () => {
+            await bootstrapTest.deleteIndex(`test_test_test`, `abc`);
+        });
+    });
+
+    describe(`static indexExists()`, () => {
         const uuid = `abc123`;
 
         beforeEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
-            await _createIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.createIndex(`test_revisions_test_form`, uuid);
         });
 
         it(`can't check index with wildcard in index`, async () => {
             const MyRevisions = createClass(`revisions`).type(`test_form`); //tenant is *
 
-            await expect(MyRevisions.indexExists()).to.be.eventually.rejectedWith(`You cannot use 'indexExists' with current tenant '*', full alias is '*_revisions_test_form'!`);
+            await expect(MyRevisions.indexExists()).to.be.eventually.rejectedWith(`You cannot use 'existsIndex' with current tenant '*', full alias is '*_revisions_test_form'!`);
         });
 
         it(`checks if index exists`, async () => {
@@ -2263,16 +2500,23 @@ describe(`BaseModel class`, function() {
         });
 
         afterEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
-    describe(`deleteIndex`, () => {
+    describe(`static deleteIndex()`, () => {
         const uuid = `abc123`;
 
         beforeEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
-            await _createIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.createIndex(`test_revisions_test_form`, uuid);
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test_test`
+                });
+            } catch (e) {
+                //OK
+            }
         });
 
         it(`can't delete index with wildcard in index`, async () => {
@@ -2281,30 +2525,87 @@ describe(`BaseModel class`, function() {
             await expect(MyRevisions.deleteIndex()).to.be.eventually.rejectedWith(`You cannot use 'deleteIndex' with current tenant '*', full alias is '*_revisions_test_form'!`);
         });
 
-        it(`deletes index`, async () => {
+        it(`deletes index along with alias`, async () => {
             const MyRevisions = createClass(`revisions`).in(`test`).type(`test_form`);
+
+            const realIndex = await MyRevisions.getIndex();
+            expect(realIndex).to.be.a(`string`);
+            expect(realIndex).not.to.be.undefined;
+
+            let indexExists = await bootstrapTest.client.indices.exists({
+                index: realIndex
+            });
+            expect(indexExists.body).to.be.true;
+            let aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyRevisions._alias
+            });
+            expect(aliasExists.body).to.be.true;
 
             await MyRevisions.deleteIndex();
 
-            const exists = await bootstrapTest.client.indices.exists({
-                index: MyRevisions._alias
+            indexExists = await bootstrapTest.client.indices.exists({
+                index: realIndex
             });
-            expect(exists.body).to.be.false;
+            expect(indexExists.body).to.be.false;
+            aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyRevisions._alias
+            });
+            expect(aliasExists.body).to.be.false;
+        });
+
+        it(`deletes index directly (alias not exists)`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test_test`
+            });
+            const MyTest = createClass(`test`).type(`test`).in(`test`);
+
+            const realIndex = await MyTest.getIndex();
+            expect(realIndex).to.be.a(`string`);
+            expect(realIndex).not.to.be.undefined;
+            expect(realIndex).to.equal(MyTest._alias);
+
+            let indexExists = await bootstrapTest.client.indices.exists({
+                index: realIndex
+            });
+            expect(indexExists.body).to.be.true;
+            let aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyTest._alias
+            });
+            expect(aliasExists.body).to.be.false;
+
+            await MyTest.deleteIndex();
+
+            indexExists = await bootstrapTest.client.indices.exists({
+                index: realIndex
+            });
+            expect(indexExists.body).to.be.false;
+            aliasExists = await bootstrapTest.client.indices.existsAlias({
+                name: MyTest._alias
+            });
+            expect(aliasExists.body).to.be.false;
         });
 
         afterEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test_test`
+                });
+            } catch (e) {
+                //OK
+            }
         });
     });
 
-    describe(`getMapping`, () => {
+    describe(`static getMapping()`, () => {
         it(`gets mapping of index`, async () => {
             const MyRevisions = createClass(`users`).in(`test`);
 
             const mapping = await MyRevisions.getMapping();
+            console.log(mapping);
             expect(mapping).to.be.an(`object`);
-            expect(mapping.test_users).to.be.an(`object`);
-            expect(mapping.test_users.mappings).to.be.an(`object`);
+            expect(Object.values(mapping)[0]).to.be.an(`object`);
+            expect(Object.values(mapping)[0].mappings).to.be.an(`object`);
         });
 
         it(`gets mapping of multiple indexes`, async () => {
@@ -2315,12 +2616,12 @@ describe(`BaseModel class`, function() {
         });
     });
 
-    describe(`putMapping`, () => {
+    describe(`static putMapping()`, () => {
         const uuid = `abc123`;
 
         beforeEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
-            await _createIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.createIndex(`test_revisions_test_form`, uuid);
         });
 
         it(`can't send empty mapping`, async () => {
@@ -2348,18 +2649,18 @@ describe(`BaseModel class`, function() {
         });
 
         afterEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
-    describe(`getSettings`, () => {
+    describe(`static getSettings()`, () => {
         it(`gets settings of index`, async () => {
             const MyUsers = createClass(`users`).in(`test`);
 
             const settings = await MyUsers.getSettings();
             expect(settings).to.be.an(`object`);
-            expect(settings.test_users).to.be.an(`object`);
-            expect(settings.test_users.settings).to.be.an(`object`);
+            expect(Object.values(settings)[0]).to.be.an(`object`);
+            expect(Object.values(settings)[0].settings).to.be.an(`object`);
         });
 
         it(`gets settings of index with default settings included`, async () => {
@@ -2367,9 +2668,9 @@ describe(`BaseModel class`, function() {
 
             const settings = await MyUsers.getSettings(true);
             expect(settings).to.be.an(`object`);
-            expect(settings.test_users).to.be.an(`object`);
-            expect(settings.test_users.settings).to.be.an(`object`);
-            expect(settings.test_users.defaults).to.be.an(`object`);
+            expect(Object.values(settings)[0]).to.be.an(`object`);
+            expect(Object.values(settings)[0].settings).to.be.an(`object`);
+            expect(Object.values(settings)[0].defaults).to.be.an(`object`);
         });
 
         it(`gets settings of multiple indexes`, async () => {
@@ -2380,12 +2681,12 @@ describe(`BaseModel class`, function() {
         });
     });
 
-    describe(`putSettings`, () => {
+    describe(`static putSettings()`, () => {
         const uuid = `abc123`;
 
         beforeEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
-            await _createIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.createIndex(`test_revisions_test_form`, uuid);
         });
 
         it(`can't send empty settings`, async () => {
@@ -2413,11 +2714,11 @@ describe(`BaseModel class`, function() {
         });
 
         afterEach(async () => {
-            await _deleteIndex(`test_revisions_test_form`, uuid);
+            await bootstrapTest.deleteIndex(`test_revisions_test_form`, uuid);
         });
     });
 
-    describe(`reindex`, () => {
+    describe(`static reindex()`, () => {
         it(`can't reindex index without destination index specified`, async () => {
             const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
 
@@ -2438,7 +2739,18 @@ describe(`BaseModel class`, function() {
             await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`You cannot use 'reindex-destination' with current tenant '*', full alias is '*_revisions_to'!`);
         });
 
-        it(`reindexes models`, async () => {
+        it(`can't reindex when source index doesn't exist`, async () => {
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_to`
+            });
+            const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
+
+            await expect(MyRevisionsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_revisions_from]`);
+        });
+
+        it(`reindexes model`, async () => {
             await bootstrapTest.client.indices.create({
                 index: `test_revisions_from`
             });
@@ -2449,30 +2761,87 @@ describe(`BaseModel class`, function() {
             const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
             const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
 
-            await bootstrapTest.client.index({
-                index: MyRevisionsSource._alias,
-                id: `test`,
-                body: {
-                    status: `:)`
-                },
-                refresh: true
-            });
+            const fromInstance = new MyRevisionsSource({ status: `:)` }, `test`);
+            await fromInstance.save();
 
             await MyRevisionsSource.reindex(MyRevisionsDestination);
 
-            const results = await bootstrapTest.client.search({
-                index: MyRevisionsDestination._alias,
-                body: {
-                    query: {
-                        match_all: {}
-                    }
-                },
-                version: true
+            const toResults = await MyRevisionsDestination.findAll();
+            expect(toResults.length).to.equal(1);
+            expect(toResults[0].constructor._alias).to.equal(MyRevisionsDestination._alias);
+            expect(toResults[0]._id).to.equal(`test`);
+            expect(toResults[0].status).to.equal(`:)`);
+        });
+
+        it(`reindexes model and specifies update script`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_from`
             });
-            expect(results.body.hits.hits.length).to.equal(1);
-            expect(results.body.hits.hits[0]._index).to.equal(MyRevisionsDestination._alias);
-            expect(results.body.hits.hits[0]._id).to.equal(`test`);
-            expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_to`
+            });
+
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+            const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
+
+            const fromInstance = new MyRevisionsSource({ status: `:)` }, `test`);
+            await fromInstance.save();
+
+            await MyRevisionsSource.reindex(MyRevisionsDestination, `ctx._source.status += "(:";`);
+
+            const toResults = await MyRevisionsDestination.findAll();
+            expect(toResults.length).to.equal(1);
+            expect(toResults[0].constructor._alias).to.equal(MyRevisionsDestination._alias);
+            expect(toResults[0]._id).to.equal(`test`);
+            expect(toResults[0].status).to.equal(`:)(:`);
+        });
+
+        it(`reindexes model and represents the destination by index string`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_from`
+            });
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions-abc_to`
+            });
+
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+            const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
+            await MyRevisionsDestination.aliasIndex(`test_revisions-abc_to`);
+
+            const fromInstance = new MyRevisionsSource({ status: `:)` }, `test`);
+            await fromInstance.save();
+
+            await MyRevisionsSource.reindex(`test_revisions-abc_to`);
+
+            const toResults = await MyRevisionsDestination.findAll();
+            expect(toResults.length).to.equal(1);
+            expect(toResults[0].constructor._alias).to.equal(MyRevisionsDestination._alias);
+            expect(toResults[0]._id).to.equal(`test`);
+            expect(toResults[0].status).to.equal(`:)`);
+        });
+
+        it(`reindexes model and represents the destination by alias string`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions_from`
+            });
+            await bootstrapTest.client.indices.create({
+                index: `test_revisions-abc_to`
+            });
+
+            const MyRevisionsSource = createClass(`revisions`).in(`test`).type(`from`);
+            const MyRevisionsDestination = createClass(`revisions`).in(`test`).type(`to`);
+            await MyRevisionsDestination.aliasIndex(`test_revisions-abc_to`);
+
+            const fromInstance = new MyRevisionsSource({ status: `:)` }, `test`);
+            await fromInstance.save();
+
+            await MyRevisionsSource.reindex(MyRevisionsDestination._alias);
+
+            const toResults = await MyRevisionsDestination.findAll();
+            expect(toResults.length).to.equal(1);
+            expect(toResults[0].constructor._alias).to.equal(MyRevisionsDestination._alias);
+            expect(toResults[0]._id).to.equal(`test`);
+            expect(toResults[0].status).to.equal(`:)`);
         });
 
         afterEach(async () => {
@@ -2490,6 +2859,281 @@ describe(`BaseModel class`, function() {
             } catch (e) {
                 //OK
             }
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_revisions-abc_to`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`static cloneIndex()`, () => {
+        it(`can't clone index with wildcard in source index`, async () => {
+            const MyTest = createClass(`test`); //tenant is *
+
+            await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`You cannot use 'clone' with current tenant '*', full alias is '*_test'!`);
+        });
+
+        it(`can't clone not existing index`, async () => {
+            const MyTest = createClass(`test`).in(`test`);
+
+            await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+        });
+
+        it(`cant clone when index is not read-only`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test`
+            });
+
+            const MyTest = createClass(`test`).in(`test`);
+
+            await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`index test_test must be read-only to resize index. use "index.blocks.write=true"`);
+        });
+
+        it(`clones model`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test`
+            });
+
+            const MyTest = createClass(`test`).in(`test`);
+            const instance = new MyTest({ status: `:)` }, `test`);
+            await instance.save();
+            MyTest.putSettings({
+                index: {
+                    blocks: {
+                        write: true
+                    }
+                }
+            });
+
+            const newIndex = await MyTest.cloneIndex();
+
+            let indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats?.body?.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.body.indices).length).to.equal(2);
+
+            const existingIndices = Object.keys(indicesStats.body.indices);
+            expect(existingIndices).includes(`test_test`);
+            expect(existingIndices).includes(newIndex);
+
+            await MyTest.deleteIndex();
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats?.body?.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.body.indices).length).to.equal(1);
+
+            await MyTest.aliasIndex(newIndex);
+            const results = await MyTest.findAll();
+            expect(results.length).to.equal(1);
+            expect(results[0].constructor._alias).to.equal(MyTest._alias);
+            expect(results[0]._id).to.equal(`test`);
+            expect(results[0].status).to.equal(`:)`);
+        });
+
+        it(`clones model and specifies settings`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test`,
+                body: {
+                    settings: {
+                        index: {
+                            refresh_interval: -1
+                        }
+                    }
+                }
+            });
+
+            const MyTest = createClass(`test`).in(`test`);
+            const instance = new MyTest({ status: `:)` }, `test`);
+            await instance.save();
+            MyTest.putSettings({
+                index: {
+                    blocks: {
+                        write: true
+                    }
+                }
+            });
+
+            const newIndex = await MyTest.cloneIndex({
+                index: {
+                    refresh_interval: `5s`
+                }
+            });
+
+            let indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats?.body?.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.body.indices).length).to.equal(2);
+
+            const existingIndices = Object.keys(indicesStats.body.indices);
+            expect(existingIndices).includes(`test_test`);
+            expect(existingIndices).includes(newIndex);
+
+            await MyTest.deleteIndex();
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats?.body?.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.body.indices).length).to.equal(1);
+
+            await MyTest.aliasIndex(newIndex);
+            const results = await MyTest.findAll();
+            expect(results.length).to.equal(1);
+            expect(results[0].constructor._alias).to.equal(MyTest._alias);
+            expect(results[0]._id).to.equal(`test`);
+            expect(results[0].status).to.equal(`:)`);
+
+            const newSettings = await MyTest.getSettings();
+            expect(Object.values(newSettings)[0].settings.index.refresh_interval).to.equal(`5s`);
+        });
+
+        afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_test*`
+                });
+            } catch (e) {
+                //OK
+            }
+        });
+    });
+
+    describe(`static refresh()`, () => {
+        it(`can't refresh not existing index`, async () => {
+            const Test = createClass(`test`).in(`test`);
+            await expect(Test.refresh()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+        });
+
+        it(`refreshes single index`, async () => {
+            const MyUsers = createClass(`users`).in(`test`).immediateRefresh(false);
+            const instance = new MyUsers({ name: `test` });
+            await instance.save();
+
+            let foundUsers = await MyUsers.findAll();
+            expect(foundUsers.length).to.equal(0);
+
+            await MyUsers.refresh();
+
+            foundUsers = await MyUsers.findAll();
+            expect(foundUsers.length).to.equal(1);
+            expect(foundUsers[0].name).to.equal(`test`);
+        });
+
+        it(`refreshes multiple indices`, async () => {
+            const FirstType = createClass(`documents`).in(`test`).type(`folder`).immediateRefresh(false);
+            const firstInstance = new FirstType({ documentTitle: `first` });
+            await firstInstance.save();
+
+            const SecondType = createClass(`documents`).in(`test`).type(`d_default`).immediateRefresh(false);
+            const secondInstance = new SecondType({ documentTitle: `second` });
+            await secondInstance.save();
+
+            let foundFirstUsers = await FirstType.findAll();
+            expect(foundFirstUsers.length).to.equal(0);
+
+            let foundSecondUsers = await SecondType.findAll();
+            expect(foundSecondUsers.length).to.equal(0);
+
+            await FirstType.refresh();
+            await SecondType.refresh();
+
+            foundFirstUsers = await FirstType.findAll();
+            expect(foundFirstUsers.length).to.equal(1);
+            expect(foundFirstUsers[0].documentTitle).to.equal(`first`);
+
+            foundSecondUsers = await SecondType.findAll();
+            expect(foundSecondUsers.length).to.equal(1);
+            expect(foundSecondUsers[0].documentTitle).to.equal(`second`);
+        });
+    });
+
+    describe(`static hasTypes()`, () => {
+        it(`checks multiple examples`, async () => {
+            //No types
+            let MyTest = createClass(`test`);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            MyTest = MyTest.in(`test`);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            MyTest = MyTest.immediateRefresh(false);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            //Defined type
+            MyTest = createClass(`test`, void 0, `test`);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            MyTest = MyTest.in(`test`);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            MyTest = MyTest.immediateRefresh(false);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            //Multiple types
+            MyTest = createClass(`test`, void 0, `*`);
+            expect(MyTest.hasTypes()).to.equal(true);
+
+            MyTest = MyTest.in(`test`);
+            expect(MyTest.hasTypes()).to.equal(true);
+
+            MyTest = MyTest.immediateRefresh(false);
+            expect(MyTest.hasTypes()).to.equal(true);
+
+            //Defined types
+            MyTest = MyTest.type(`test`);
+            expect(MyTest.hasTypes()).to.equal(false);
+
+            MyTest = MyTest.type(`another_test`);
+            expect(MyTest.hasTypes()).to.equal(false);
+        });
+    });
+
+    describe(`static getTypes()`, () => {
+        it(`can't get types without specified tenant`, async () => {
+            const MyTest = createClass(`documents`, void 0, `*`); //tenant is *
+
+            await expect(MyTest.getTypes()).to.be.eventually.rejectedWith(`You cannot use 'getTypes' with current tenant '*', full alias is '*_documents_*'!`);
+        });
+
+        it(`can't be used on models without types or tenant`, async () => {
+            let MyTest = createClass(`test`);
+            await expect(MyTest.getTypes()).to.be.eventually.rejectedWith(`You cannot use 'getTypes' with current tenant '*', full alias is '*_test'!`);
+
+            MyTest = MyTest.in(`test`);
+            await expect(MyTest.getTypes()).to.be.eventually.rejectedWith(`ODM cannot have any types.`);
+
+            MyTest = createClass(`test`, void 0, `test`);
+            await expect(MyTest.getTypes()).to.be.eventually.rejectedWith(`You cannot use 'getTypes' with current tenant '*', full alias is '*_test_test'!`);
+
+            MyTest = MyTest.in(`test`);
+            await expect(MyTest.getTypes()).to.be.eventually.rejectedWith(`ODM cannot have any types.`);
+
+            MyTest = MyTest.type(`another_test`);
+            await expect(MyTest.getTypes()).to.be.eventually.rejectedWith(`ODM cannot have any types.`);
+        });
+
+        it(`returns all existing types`, async () => {
+            const MyDocuments = createClass(`documents`, void 0, `*`).in(`test`);
+            const allModels = await MyDocuments.getTypes();
+            expect(allModels.length).to.equal(2);
+
+            const possibleTypes = [`d_default`, `folder`];
+            for (const model of allModels) {
+                expect(model._tenant).to.equal(`test`);
+                expect(model._name).to.equal(`documents`);
+                expect(possibleTypes).to.include(model._type);
+            }
+        });
+
+        it(`returns empty array when not types were found`, async () => {
+            const MyDocuments = createClass(`test`, void 0, `*`).in(`test`);
+            const allModels = await MyDocuments.getTypes();
+            expect(allModels.length).to.equal(0);
         });
     });
 
@@ -2536,6 +3180,49 @@ describe(`BaseModel class`, function() {
             expect(myInstance._seq_no).not.to.be.undefined;
 
             const results = await bootstrapTest.client.search({
+                index: MyClass._alias,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                },
+                version: true
+            });
+            expect(results.body.hits.total.value).to.equal(1);
+            expect(results.body.hits.hits[0]._source.status).to.equal(`:)`);
+            expect(results.body.hits.hits[0]._source.name).to.equal(`abc`);
+            expect(results.body.hits.hits[0]._source.fullname).to.equal(`abc def`);
+        });
+
+        it(`saves data instance without immediate refresh`, async () => {
+            const MyClass = createClass(`users`, void 0).in(`test`).immediateRefresh(false);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance = new MyClass(data);
+            await myInstance.save();
+            expect(myInstance._id).not.to.be.undefined;
+            expect(myInstance._version).not.to.be.undefined;
+            expect(myInstance._primary_term).not.to.be.undefined;
+            expect(myInstance._seq_no).not.to.be.undefined;
+
+            let results = await bootstrapTest.client.search({
+                index: MyClass._alias,
+                body: {
+                    query: {
+                        match_all: {}
+                    }
+                },
+                version: true
+            });
+            expect(results.body.hits.total.value).to.equal(0);
+
+            await MyClass.refresh();
+
+            results = await bootstrapTest.client.search({
                 index: MyClass._alias,
                 body: {
                     query: {
@@ -3041,42 +3728,72 @@ describe(`BaseModel class`, function() {
         });
     });
 
-    async function _createIndex(alias, uuid) {
-        const indexParts = alias.split(`_`);
-        indexParts[1] += `-${uuid}`;
-        const index = indexParts.join(`_`);
+    describe(`_parseIndex()`, () => {
+        it(`parses different indices`, () => {
+            const UserClass = createClass(`users`, void 0).in(`test`);
+            let result = UserClass._parseIndex(`*_users`);
+            expect(result.tenant).to.equal(`*`);
+            expect(result.name).to.equal(`users`);
+            expect(result.type).to.be.undefined;
+            expect(result.alias).to.equal(`*_users`);
 
-        await bootstrapTest.client.indices.create({
-            index: index
+            result = UserClass._parseIndex(`*_users-asd123`);
+            expect(result.tenant).to.equal(`*`);
+            expect(result.name).to.equal(`users`);
+            expect(result.type).to.be.undefined;
+            expect(result.alias).to.equal(`*_users`);
+
+            result = UserClass._parseIndex(`test_users`);
+            expect(result.tenant).to.equal(`test`);
+            expect(result.name).to.equal(`users`);
+            expect(result.type).to.be.undefined;
+            expect(result.alias).to.equal(`test_users`);
+
+            result = UserClass._parseIndex(`test_users-asfd321`);
+            expect(result.tenant).to.equal(`test`);
+            expect(result.name).to.equal(`users`);
+            expect(result.type).to.be.undefined;
+            expect(result.alias).to.equal(`test_users`);
+
+            expect(() => UserClass._parseIndex(`test_nvm`)).to.throw(`You requested index in incorrect ODM. ODM name is 'users', requested index name results into 'nvm'.`);
+            expect(() => UserClass._parseIndex(`test_users_test`)).to.throw(`This ODM cannot contain types.`);
+
+            const DocumentClass = createClass(`documents`, void 0, `*`);
+            result = DocumentClass._parseIndex(`*_documents_test`);
+            expect(result.tenant).to.equal(`*`);
+            expect(result.name).to.equal(`documents`);
+            expect(result.type).to.equal(`test`);
+            expect(result.alias).to.equal(`*_documents_test`);
+
+            result = DocumentClass._parseIndex(`*_documents-asd123_test`);
+            expect(result.tenant).to.equal(`*`);
+            expect(result.name).to.equal(`documents`);
+            expect(result.type).to.equal(`test`);
+            expect(result.alias).to.equal(`*_documents_test`);
+
+            result = DocumentClass._parseIndex(`test_documents_test`);
+            expect(result.tenant).to.equal(`test`);
+            expect(result.name).to.equal(`documents`);
+            expect(result.type).to.equal(`test`);
+            expect(result.alias).to.equal(`test_documents_test`);
+
+            result = DocumentClass._parseIndex(`test_documents-asfd321_test`);
+            expect(result.tenant).to.equal(`test`);
+            expect(result.name).to.equal(`documents`);
+            expect(result.type).to.equal(`test`);
+            expect(result.alias).to.equal(`test_documents_test`);
+
+            expect(() => DocumentClass._parseIndex(`test_nvm_test`)).to.throw(`You requested index in incorrect ODM. ODM name is 'documents', requested index name results into 'nvm'.`);
+            expect(() => DocumentClass._parseIndex(`test_documents`)).to.throw(`This ODM must contain type.`);
+
+            const TestClass = createClass(`test_documents`, void 0, `*`);
+            result = TestClass._parseIndex(`test_test_documents-asfd321_test_wtf`);
+            expect(result.tenant).to.equal(`test`);
+            expect(result.name).to.equal(`test_documents`);
+            expect(result.type).to.equal(`test_wtf`);
+            expect(result.alias).to.equal(`test_test_documents_test_wtf`);
+
+            expect(() => TestClass._parseIndex(`test_documents-asfd321_test_wt`)).to.throw(`You requested index in incorrect ODM. ODM name is 'test_documents', requested index name results into 'documents-asfd321_test'.`);
         });
-        await bootstrapTest.client.indices.putAlias({
-            index: index,
-            name: alias,
-            body: {
-                is_write_index: true
-            }
-        });
-    }
-
-    async function _deleteIndex(alias, uuid) {
-        const indexParts = alias.split(`_`);
-        indexParts[1] += `-${uuid}`;
-        const index = indexParts.join(`_`);
-
-        try {
-            await bootstrapTest.client.indices.delete({
-                index: index
-            });
-        } catch (e) {
-            //OK
-        }
-        try {
-            await bootstrapTest.client.indices.deleteAlias({
-                index: index,
-                name: alias,
-            });
-        } catch (e) {
-            //OK
-        }
-    }
+    });
 });
