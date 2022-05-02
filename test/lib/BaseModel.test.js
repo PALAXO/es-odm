@@ -2892,7 +2892,50 @@ describe(`BaseModel class`, function() {
             await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`index test_test must be read-only to resize index. use "index.blocks.write=true"`);
         });
 
-        it(`clones model`, async () => {
+        it(`clones aliased model`, async () => {
+            const MyTest = createClass(`users`).in(`test`);
+            const originalIndex = await MyTest.getIndex();
+
+            const instance = new MyTest({ status: `:)` }, `test`);
+            await instance.save();
+            MyTest.putSettings({
+                index: {
+                    blocks: {
+                        write: true
+                    }
+                }
+            });
+
+            const newIndex = await MyTest.cloneIndex();
+            expect(originalIndex).to.not.equal(newIndex);
+
+            let indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_users*`
+            });
+            expect(indicesStats?.body?.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.body.indices).length).to.equal(2);
+
+            const existingIndices = Object.keys(indicesStats.body.indices);
+            expect(existingIndices).includes(originalIndex);
+            expect(existingIndices).includes(newIndex);
+
+            await MyTest.deleteIndex();
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_users*`
+            });
+            expect(indicesStats?.body?.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.body.indices).length).to.equal(1);
+            expect(Object.keys(indicesStats.body.indices)[0]).to.equal(newIndex);
+
+            await MyTest.aliasIndex(newIndex);
+            const results = await MyTest.findAll();
+            expect(results.length).to.equal(1);
+            expect(results[0].constructor._alias).to.equal(MyTest._alias);
+            expect(results[0]._id).to.equal(`test`);
+            expect(results[0].status).to.equal(`:)`);
+        });
+
+        it(`clones not aliased model`, async () => {
             await bootstrapTest.client.indices.create({
                 index: `test_test`
             });
@@ -2993,6 +3036,21 @@ describe(`BaseModel class`, function() {
         });
 
         afterEach(async () => {
+            try {
+                await bootstrapTest.client.indices.putSettings({
+                    index: `test_users*`,
+                    body: {
+                        index: {
+                            blocks: {
+                                write: null
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                //OK
+            }
+
             try {
                 await bootstrapTest.client.indices.delete({
                     index: `test_test*`

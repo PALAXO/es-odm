@@ -4,3 +4,6 @@
 # Common
 node_modules/
 temp/
+
+.nyc_output/
+coverage/
