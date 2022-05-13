@@ -14,7 +14,8 @@
     "url": "http://localhost:9200",
     "maxResults": 10000,
     "scrollTimeout": "5s",
-    "retryOnConflict": 10
+    "retryOnConflict": 10,
+    "maxRetries": 15
   },
   "logger": {
     "name": "elasticsearch",
