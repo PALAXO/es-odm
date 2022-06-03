@@ -2602,7 +2602,6 @@ describe(`BaseModel class`, function() {
             const MyRevisions = createClass(`users`).in(`test`);
 
             const mapping = await MyRevisions.getMapping();
-            console.log(mapping);
             expect(mapping).to.be.an(`object`);
             expect(Object.values(mapping)[0]).to.be.an(`object`);
             expect(Object.values(mapping)[0].mappings).to.be.an(`object`);
