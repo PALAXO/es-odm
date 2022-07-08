@@ -12,11 +12,12 @@
   },
   "es": {
     "url": "http://localhost:9200",
+    "requestTimeout": 120000,
     "maxResults": 10000,
     "scrollTimeout": "5s",
     "retryOnConflict": 10,
     "retries":  {
-      "exponent": 1.7,
+      "base": 2.0,
       "maxRetries": 5
     }
   },
