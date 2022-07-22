@@ -101,12 +101,12 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance1._id
             });
-            expect(results1.body._version).to.equal(myInstance1._version);
-            expect(results1.body._primary_term).to.equal(myInstance1._primary_term);
-            expect(results1.body._seq_no).to.equal(myInstance1._seq_no);
-            expect(results1.body._source.status).to.equal(data1.status);
-            expect(results1.body._source.name).to.equal(data1.name);
-            expect(results1.body._source.fullname).to.equal(data1.fullname);
+            expect(results1._version).to.equal(myInstance1._version);
+            expect(results1._primary_term).to.equal(myInstance1._primary_term);
+            expect(results1._seq_no).to.equal(myInstance1._seq_no);
+            expect(results1._source.status).to.equal(data1.status);
+            expect(results1._source.name).to.equal(data1.name);
+            expect(results1._source.fullname).to.equal(data1.fullname);
 
             expect(myInstance2._id).not.to.be.undefined;
             expect(myInstance2._version).not.to.be.undefined;
@@ -116,12 +116,12 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance2._id
             });
-            expect(results2.body._version).to.equal(myInstance2._version);
-            expect(results2.body._primary_term).to.equal(myInstance2._primary_term);
-            expect(results2.body._seq_no).to.equal(myInstance2._seq_no);
-            expect(results2.body._source.status).to.equal(data2.status);
-            expect(results2.body._source.name).to.equal(data2.name);
-            expect(results2.body._source.fullname).to.equal(data2.fullname);
+            expect(results2._version).to.equal(myInstance2._version);
+            expect(results2._primary_term).to.equal(myInstance2._primary_term);
+            expect(results2._seq_no).to.equal(myInstance2._seq_no);
+            expect(results2._source.status).to.equal(data2.status);
+            expect(results2._source.name).to.equal(data2.name);
+            expect(results2._source.fullname).to.equal(data2.fullname);
 
             expect(myInstance1._id).to.not.equal(myInstance2._id);
         });
@@ -203,13 +203,13 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance1._id
             });
-            expect(results1.body._id).to.equal(`first`);
-            expect(results1.body._version).to.equal(myInstance1._version);
-            expect(results1.body._primary_term).to.equal(myInstance1._primary_term);
-            expect(results1.body._seq_no).to.equal(myInstance1._seq_no);
-            expect(results1.body._source.status).to.equal(data1.status);
-            expect(results1.body._source.name).to.equal(data1.name);
-            expect(results1.body._source.fullname).to.equal(data1.fullname);
+            expect(results1._id).to.equal(`first`);
+            expect(results1._version).to.equal(myInstance1._version);
+            expect(results1._primary_term).to.equal(myInstance1._primary_term);
+            expect(results1._seq_no).to.equal(myInstance1._seq_no);
+            expect(results1._source.status).to.equal(data1.status);
+            expect(results1._source.name).to.equal(data1.name);
+            expect(results1._source.fullname).to.equal(data1.fullname);
 
             expect(myInstance2._id).not.to.be.undefined;
             expect(myInstance2._version).not.to.be.undefined;
@@ -219,12 +219,12 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance2._id
             });
-            expect(results2.body._version).to.equal(myInstance2._version);
-            expect(results2.body._primary_term).to.equal(myInstance2._primary_term);
-            expect(results2.body._seq_no).to.equal(myInstance2._seq_no);
-            expect(results2.body._source.status).to.equal(data2.status);
-            expect(results2.body._source.name).to.equal(data2.name);
-            expect(results2.body._source.fullname).to.equal(data2.fullname);
+            expect(results2._version).to.equal(myInstance2._version);
+            expect(results2._primary_term).to.equal(myInstance2._primary_term);
+            expect(results2._seq_no).to.equal(myInstance2._seq_no);
+            expect(results2._source.status).to.equal(data2.status);
+            expect(results2._source.name).to.equal(data2.name);
+            expect(results2._source.fullname).to.equal(data2.fullname);
 
             expect(myInstance3._id).not.to.be.undefined;
             expect(myInstance3._version).not.to.be.undefined;
@@ -234,13 +234,13 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance3._id
             });
-            expect(results3.body._id).to.equal(`third`);
-            expect(results3.body._version).to.equal(myInstance3._version);
-            expect(results3.body._primary_term).to.equal(myInstance3._primary_term);
-            expect(results3.body._seq_no).to.equal(myInstance3._seq_no);
-            expect(results3.body._source.status).to.equal(data3.status);
-            expect(results3.body._source.name).to.equal(data3.name);
-            expect(results3.body._source.fullname).to.equal(data3.fullname);
+            expect(results3._id).to.equal(`third`);
+            expect(results3._version).to.equal(myInstance3._version);
+            expect(results3._primary_term).to.equal(myInstance3._primary_term);
+            expect(results3._seq_no).to.equal(myInstance3._seq_no);
+            expect(results3._source.status).to.equal(data3.status);
+            expect(results3._source.name).to.equal(data3.name);
+            expect(results3._source.fullname).to.equal(data3.fullname);
         });
 
         it(`can't use parameter 'useVersion' for not yet indexed records`, async () => {
@@ -254,7 +254,7 @@ describe(`BulkArray class`, function() {
             const myInstance1 = new MyClass(data1, `first`, 666);
 
             const bulk = new BulkArray(myInstance1);
-            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`Response Error`);
+            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`"found":false`);
         });
 
         it(`saves array with specified version`, async () => {
@@ -294,7 +294,7 @@ describe(`BulkArray class`, function() {
             await bootstrapTest.client.index({
                 index: MyClass._alias,
                 id: myInstance._id,
-                body: {
+                document: {
                     status: `:(`
                 },
                 refresh: true
@@ -360,7 +360,7 @@ describe(`BulkArray class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                body: {
+                document: {
                     status: `:)`,
                     name: `happy`
                 },
@@ -369,7 +369,7 @@ describe(`BulkArray class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                body: {
+                document: {
                     status: `:(`,
                     name: `sad`
                 },
@@ -378,7 +378,7 @@ describe(`BulkArray class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                body: {
+                document: {
                     html: `folder 1`
                 },
                 id: `1folder`,
@@ -386,7 +386,7 @@ describe(`BulkArray class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                body: {
+                document: {
                     html: `folder 2`
                 },
                 id: `2folder`,
@@ -394,7 +394,7 @@ describe(`BulkArray class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                body: {
+                document: {
                     html: `d_default`
                 },
                 refresh: true
@@ -431,19 +431,19 @@ describe(`BulkArray class`, function() {
                 index: myInstance1.constructor._alias,
                 id: myInstance1._id
             });
-            expect(results1.body).to.be.false;
+            expect(results1).to.be.false;
 
             const results2 = await bootstrapTest.client.exists({
                 index: myInstance2.constructor._alias,
                 id: myInstance2._id
             });
-            expect(results2.body).to.be.false;
+            expect(results2).to.be.false;
 
             const results3 = await bootstrapTest.client.exists({
                 index: myInstance3.constructor._alias,
                 id: myInstance3._id
             });
-            expect(results3.body).to.be.false;
+            expect(results3).to.be.false;
         });
 
         it(`deletes only correct and saved data instances`, async () => {
@@ -464,7 +464,7 @@ describe(`BulkArray class`, function() {
                 index: myInstance1.constructor._alias,
                 id: myInstance1._id
             });
-            expect(results1.body).to.be.false;
+            expect(results1).to.be.false;
         });
 
         it(`deletes array with specified version`, async () => {
@@ -485,7 +485,7 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance._id
             });
-            expect(exists.body).to.be.false;
+            expect(exists).to.be.false;
         });
 
         it(`can't delete array when sequence numbers are different`, async () => {
@@ -502,7 +502,7 @@ describe(`BulkArray class`, function() {
             await bootstrapTest.client.index({
                 index: MyClass._alias,
                 id: myInstance._id,
-                body: {
+                document: {
                     status: `:(`
                 },
                 refresh: true
@@ -538,7 +538,7 @@ describe(`BulkArray class`, function() {
                 index: MyClass._alias,
                 id: myInstance._id
             });
-            expect(exists.body).to.be.false;
+            expect(exists).to.be.false;
         });
 
         it(`can't delete array with specified incorrect version and without sequence numbers, automatically fetches sequence numbers`, async () => {
@@ -583,7 +583,7 @@ describe(`BulkArray class`, function() {
             await bootstrapTest.client.index({
                 index: MyClass._alias,
                 id: `ok`,
-                body: {
+                document: {
                     status: `:D`,
                     name: `ABC`,
                     fullname: `ABC def`
@@ -593,7 +593,7 @@ describe(`BulkArray class`, function() {
             await bootstrapTest.client.index({
                 index: MyClass._alias,
                 id: `ko`,
-                body: {
+                document: {
                     status: `:/`,
                     name: `DEF`,
                     fullname: `DEF abc`

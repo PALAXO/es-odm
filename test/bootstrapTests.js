@@ -58,10 +58,8 @@ async function deleteData() {
     try {
         await client.deleteByQuery({
             index: `*`,
-            body: {
-                query: {
-                    match_all: {}
-                }
+            query: {
+                match_all: {}
             },
             refresh: true
         });
@@ -92,9 +90,7 @@ async function createIndex(alias, uuid) {
     await client.indices.putAlias({
         index: index,
         name: alias,
-        body: {
-            is_write_index: true
-        }
+        is_write_index: true
     });
 }
 
@@ -133,66 +129,60 @@ before(async function() {
 
     await client.indices.create({
         index: `test_users-abc123`,
-        body: {
-            settings: {
-                index: {
-                    refresh_interval: -1
-                }
-            },
-            mappings: {
-                dynamic: `strict`,
-                properties: {
-                    status: {
-                        type: `keyword`
-                    },
-                    name: {
-                        type: `keyword`
-                    },
-                    fullname: {
-                        type: `keyword`
-                    }
+        settings: {
+            index: {
+                refresh_interval: -1
+            }
+        },
+        mappings: {
+            dynamic: `strict`,
+            properties: {
+                status: {
+                    type: `keyword`
+                },
+                name: {
+                    type: `keyword`
+                },
+                fullname: {
+                    type: `keyword`
                 }
             }
         }
     });
     await client.indices.create({
         index: `test_documents-abc123_folder`,
-        body: {
-            settings: {
-                index: {
-                    refresh_interval: -1
-                }
-            },
-            mappings: {
-                dynamic: `strict`,
-                properties: {
-                    documentTitle: {
-                        type: `keyword`
-                    },
-                    html: {
-                        type: `keyword`
-                    }
+        settings: {
+            index: {
+                refresh_interval: -1
+            }
+        },
+        mappings: {
+            dynamic: `strict`,
+            properties: {
+                documentTitle: {
+                    type: `keyword`
+                },
+                html: {
+                    type: `keyword`
                 }
             }
         }
     });
     await client.indices.create({
         index: `test_documents-abc123_d_default`,
-        body: {
-            settings: {
-                index: {
-                    refresh_interval: -1
-                }
-            },
-            mappings: {
-                dynamic: `strict`,
-                properties: {
-                    documentTitle: {
-                        type: `keyword`
-                    },
-                    html: {
-                        type: `keyword`
-                    }
+        settings: {
+            index: {
+                refresh_interval: -1
+            }
+        },
+        mappings: {
+            dynamic: `strict`,
+            properties: {
+                documentTitle: {
+                    type: `keyword`
+                },
+                html: {
+                    type: `keyword`
                 }
             }
         }
@@ -201,23 +191,17 @@ before(async function() {
     await client.indices.putAlias({
         index: `test_users-abc123`,
         name: `test_users`,
-        body: {
-            is_write_index: true
-        }
+        is_write_index: true
     });
     await client.indices.putAlias({
         index: `test_documents-abc123_folder`,
         name: `test_documents_folder`,
-        body: {
-            is_write_index: true
-        }
+        is_write_index: true
     });
     await client.indices.putAlias({
         index: `test_documents-abc123_d_default`,
         name: `test_documents_d_default`,
-        body: {
-            is_write_index: true
-        }
+        is_write_index: true
     });
 });
 

@@ -200,7 +200,7 @@ describe(`JointModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                body: {
+                document: {
                     status: `:)`,
                     name: `happy`
                 },
@@ -209,7 +209,7 @@ describe(`JointModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                body: {
+                document: {
                     status: `:(`,
                     name: `sad`
                 },
@@ -218,7 +218,7 @@ describe(`JointModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                body: {
+                document: {
                     html: `folder 1`
                 },
                 id: `1folder`,
@@ -226,7 +226,7 @@ describe(`JointModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                body: {
+                document: {
                     html: `folder 2`
                 },
                 id: `2folder`,
@@ -234,7 +234,7 @@ describe(`JointModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                body: {
+                document: {
                     html: `d_default`
                 },
                 refresh: true
@@ -291,8 +291,8 @@ describe(`JointModel class`, function() {
             expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._score).to.be.a(`number`);
-            expect(results[0].status).to.equal(userObject1.body.status);
-            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.document.status);
+            expect(results[0].name).to.equal(userObject1.document.name);
         });
 
         it(`will ignore query in JointModel search`, async () => {
@@ -319,8 +319,8 @@ describe(`JointModel class`, function() {
             expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._score).to.be.a(`number`);
-            expect(results[0].status).to.equal(userObject1.body.status);
-            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.document.status);
+            expect(results[0].name).to.equal(userObject1.document.name);
         });
 
         it(`searches with multiple recorded queries`, async () => {
@@ -369,15 +369,15 @@ describe(`JointModel class`, function() {
             });
             expect(userInstances.length).to.equal(1);
             expect(userInstances[0]).to.be.instanceOf(OriginalUserClass);
-            expect(userInstances[0].status).to.equal(userObject1.body.status);
-            expect(userInstances[0].name).to.equal(userObject1.body.name);
+            expect(userInstances[0].status).to.equal(userObject1.document.status);
+            expect(userInstances[0].name).to.equal(userObject1.document.name);
 
             expect(folderAfterFunctionCalled).to.be.true;
             const folderInstances = results.filter((instance) => {
                 return instance.constructor._alias === FolderClass._alias;
             });
             expect(folderInstances.length).to.equal(2);
-            const expectedValues = [folderDocument1.body.html, folderDocument2.body.html];
+            const expectedValues = [folderDocument1.document.html, folderDocument2.document.html];
             for (const folderInstance of folderInstances) {
                 expect(folderInstance).to.be.instanceOf(OriginalFolderClass);
                 expect(expectedValues).to.include(folderInstance.html);
