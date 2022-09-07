@@ -12,15 +12,15 @@ describe(`JointModel class`, function() {
         it(`can't record model without correct index`, () => {
             const jointModel = new JointModel();
 
-            expect(() => jointModel.recordSearch({})).to.throw(`Model doesn't have specified index!`);
-            expect(() => jointModel.recordSearch({ __fullIndex: {} })).to.throw(`Model doesn't have specified index!`);
+            expect(() => jointModel.recordSearch({})).to.throw(`Model doesn't have specified alias!`);
+            expect(() => jointModel.recordSearch({ _alias: {} })).to.throw(`Model doesn't have specified alias!`);
         });
 
         it(`can't record model with wildcard in index`, () => {
             const jointModel = new JointModel();
 
-            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()))).to.throw(`Model index cannot contain wildcards!`);
-            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()).in(`?`))).to.throw(`Model index cannot contain wildcards!`);
+            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()))).to.throw(`Model alias cannot contain wildcards!`);
+            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()).in(`?`))).to.throw(`Model alias cannot contain wildcards!`);
         });
 
         it(`can record correct model`, () => {
@@ -28,10 +28,10 @@ describe(`JointModel class`, function() {
             const MyClass = createClass(`users`, Joi.object()).in(`test`);
 
             const rewritten = jointModel.recordSearch(MyClass);
-            expect(rewritten.__fullIndex).to.equal(MyClass.__fullIndex);
+            expect(rewritten._alias).to.equal(MyClass._alias);
             expect(jointModel.models.length).to.equal(1);
-            expect(jointModel.models[0].index).to.equal(MyClass.__fullIndex);
-            expect(jointModel.models[0].model.__fullIndex).to.equal(MyClass.__fullIndex);
+            expect(jointModel.models[0].alias).to.equal(MyClass._alias);
+            expect(jointModel.models[0].model._alias).to.equal(MyClass._alias);
 
             const query1 = {
                 query: {
@@ -61,18 +61,18 @@ describe(`JointModel class`, function() {
             const MyClass2 = createClass(`documents`, Joi.object(), `folder`).in(`test`);
 
             const rewritten1 = jointModel.recordSearch(MyClass1);
-            expect(rewritten1.__fullIndex).to.equal(MyClass1.__fullIndex);
+            expect(rewritten1._alias).to.equal(MyClass1._alias);
             expect(jointModel.models.length).to.equal(1);
-            expect(jointModel.models[0].index).to.equal(MyClass1.__fullIndex);
-            expect(jointModel.models[0].model.__fullIndex).to.equal(MyClass1.__fullIndex);
+            expect(jointModel.models[0].alias).to.equal(MyClass1._alias);
+            expect(jointModel.models[0].model._alias).to.equal(MyClass1._alias);
 
             const rewritten2 = jointModel.recordSearch(MyClass2);
-            expect(rewritten2.__fullIndex).to.equal(MyClass2.__fullIndex);
+            expect(rewritten2._alias).to.equal(MyClass2._alias);
             expect(jointModel.models.length).to.equal(2);
-            expect(jointModel.models[0].index).to.equal(MyClass1.__fullIndex);
-            expect(jointModel.models[0].model.__fullIndex).to.equal(MyClass1.__fullIndex);
-            expect(jointModel.models[1].index).to.equal(MyClass2.__fullIndex);
-            expect(jointModel.models[1].model.__fullIndex).to.equal(MyClass2.__fullIndex);
+            expect(jointModel.models[0].alias).to.equal(MyClass1._alias);
+            expect(jointModel.models[0].model._alias).to.equal(MyClass1._alias);
+            expect(jointModel.models[1].alias).to.equal(MyClass2._alias);
+            expect(jointModel.models[1].model._alias).to.equal(MyClass2._alias);
 
             const query1 = {
                 query: {
@@ -134,23 +134,23 @@ describe(`JointModel class`, function() {
 
             const MyClass1 = createClass(`users`, Joi.object()).in(`test`);
             const rewritten1 = jointModel.recordSearch(MyClass1);
-            expect(rewritten1.__fullIndex).to.equal(MyClass1.__fullIndex);
+            expect(rewritten1._alias).to.equal(MyClass1._alias);
 
             const MyClass2 = createClass(`documents`, Joi.object(), `folder`).in(`test`);
             const rewritten2 = jointModel.recordSearch(MyClass2);
-            expect(rewritten2.__fullIndex).to.equal(MyClass2.__fullIndex);
+            expect(rewritten2._alias).to.equal(MyClass2._alias);
 
             const MyClass3 = createClass(`documents`, Joi.object(), `folder`).in(`test`);
             const rewritten3 = jointModel.recordSearch(MyClass3);
-            expect(rewritten3.__fullIndex).to.equal(MyClass3.__fullIndex);
+            expect(rewritten3._alias).to.equal(MyClass3._alias);
 
             const MyClass4 = createClass(`users`, Joi.object()).in(`test`);
             const rewritten4 = jointModel.recordSearch(MyClass4);
-            expect(rewritten4.__fullIndex).to.equal(MyClass4.__fullIndex);
+            expect(rewritten4._alias).to.equal(MyClass4._alias);
 
             expect(jointModel.models.length).to.equal(2);
-            expect(jointModel.models[0].index).to.equal(MyClass1.__fullIndex);
-            expect(jointModel.models[1].index).to.equal(MyClass2.__fullIndex);
+            expect(jointModel.models[0].alias).to.equal(MyClass1._alias);
+            expect(jointModel.models[1].alias).to.equal(MyClass2._alias);
 
             const query1 = {
                 query: {
@@ -200,7 +200,7 @@ describe(`JointModel class`, function() {
         beforeEach(async () => {
             userObject1 = {
                 index: `test_users`,
-                body: {
+                document: {
                     status: `:)`,
                     name: `happy`
                 },
@@ -209,7 +209,7 @@ describe(`JointModel class`, function() {
             };
             userObject2 = {
                 index: `test_users`,
-                body: {
+                document: {
                     status: `:(`,
                     name: `sad`
                 },
@@ -218,7 +218,7 @@ describe(`JointModel class`, function() {
             };
             folderDocument1 = {
                 index: `test_documents_folder`,
-                body: {
+                document: {
                     html: `folder 1`
                 },
                 id: `1folder`,
@@ -226,7 +226,7 @@ describe(`JointModel class`, function() {
             };
             folderDocument2 = {
                 index: `test_documents_folder`,
-                body: {
+                document: {
                     html: `folder 2`
                 },
                 id: `2folder`,
@@ -234,7 +234,7 @@ describe(`JointModel class`, function() {
             };
             defaultDocument = {
                 index: `test_documents_d_default`,
-                body: {
+                document: {
                     html: `d_default`
                 },
                 refresh: true
@@ -291,8 +291,8 @@ describe(`JointModel class`, function() {
             expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._score).to.be.a(`number`);
-            expect(results[0].status).to.equal(userObject1.body.status);
-            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.document.status);
+            expect(results[0].name).to.equal(userObject1.document.name);
         });
 
         it(`will ignore query in JointModel search`, async () => {
@@ -319,8 +319,8 @@ describe(`JointModel class`, function() {
             expect(results[0]._seq_no).to.be.a(`number`);
             expect(results[0]._version).to.be.a(`number`);
             expect(results[0]._score).to.be.a(`number`);
-            expect(results[0].status).to.equal(userObject1.body.status);
-            expect(results[0].name).to.equal(userObject1.body.name);
+            expect(results[0].status).to.equal(userObject1.document.status);
+            expect(results[0].name).to.equal(userObject1.document.name);
         });
 
         it(`searches with multiple recorded queries`, async () => {
@@ -365,19 +365,19 @@ describe(`JointModel class`, function() {
 
             expect(userAfterFunctionCalled).to.be.true;
             const userInstances = results.filter((instance) => {
-                return instance.constructor.__fullIndex === UserClass.__fullIndex;
+                return instance.constructor._alias === UserClass._alias;
             });
             expect(userInstances.length).to.equal(1);
             expect(userInstances[0]).to.be.instanceOf(OriginalUserClass);
-            expect(userInstances[0].status).to.equal(userObject1.body.status);
-            expect(userInstances[0].name).to.equal(userObject1.body.name);
+            expect(userInstances[0].status).to.equal(userObject1.document.status);
+            expect(userInstances[0].name).to.equal(userObject1.document.name);
 
             expect(folderAfterFunctionCalled).to.be.true;
             const folderInstances = results.filter((instance) => {
-                return instance.constructor.__fullIndex === FolderClass.__fullIndex;
+                return instance.constructor._alias === FolderClass._alias;
             });
             expect(folderInstances.length).to.equal(2);
-            const expectedValues = [folderDocument1.body.html, folderDocument2.body.html];
+            const expectedValues = [folderDocument1.document.html, folderDocument2.document.html];
             for (const folderInstance of folderInstances) {
                 expect(folderInstance).to.be.instanceOf(OriginalFolderClass);
                 expect(expectedValues).to.include(folderInstance.html);
@@ -385,7 +385,7 @@ describe(`JointModel class`, function() {
 
             expect(documentAfterFunctionCalled).to.be.false;
             const documentInstances = results.filter((instance) => {
-                return instance.constructor.__fullIndex === DocumentClass.__fullIndex;
+                return instance.constructor._alias === DocumentClass._alias;
             });
             expect(documentInstances.length).to.equal(0);
         });
@@ -439,7 +439,7 @@ describe(`JointModel class`, function() {
 
             expect(userAfterFunctionCalled).to.be.true;
             const userInstances = results.filter((instance) => {
-                return instance.constructor.__fullIndex === UserClass.__fullIndex;
+                return instance.constructor._alias === UserClass._alias;
             });
             expect(userInstances.length).to.equal(2);
             for (const instance of userInstances) {
@@ -448,7 +448,7 @@ describe(`JointModel class`, function() {
 
             expect(folderAfterFunctionCalled).to.be.true;
             const folderInstances = results.filter((instance) => {
-                return instance.constructor.__fullIndex === FolderClass.__fullIndex;
+                return instance.constructor._alias === FolderClass._alias;
             });
             expect(folderInstances.length).to.equal(2);
             for (const instance of folderInstances) {
@@ -457,7 +457,7 @@ describe(`JointModel class`, function() {
 
             expect(documentAfterFunctionCalled).to.be.true;
             const documentInstances = results.filter((instance) => {
-                return instance.constructor.__fullIndex === DocumentClass.__fullIndex;
+                return instance.constructor._alias === DocumentClass._alias;
             });
             expect(documentInstances.length).to.equal(1);
             for (const instance of documentInstances) {
@@ -600,7 +600,7 @@ describe(`JointModel class`, function() {
             expect(results.length).to.equal(5);
             expect(results._total).to.be.undefined;
             for (const result of results) {
-                expect(result.constructor.__fullIndex).to.be.undefined;
+                expect(result.constructor._alias).to.be.undefined;
             }
         });
 
@@ -646,13 +646,15 @@ describe(`JointModel class`, function() {
             expect(results._total).to.equal(5);
             expect(results.aggregations.index.buckets.length).to.equal(3);
 
-            const userAggregations = results.aggregations.index.buckets.find((agg) => agg.key === UserClass.__fullIndex);
+            const [userIndex, folderIndex, documentIndex] = await Promise.all([UserClass.getIndex(), FolderClass.getIndex(), DocumentClass.getIndex()]);
+
+            const userAggregations = results.aggregations.index.buckets.find((agg) => agg.key === userIndex);
             expect(userAggregations.doc_count).to.equal(2);
 
-            const folderAggregations = results.aggregations.index.buckets.find((agg) => agg.key === FolderClass.__fullIndex);
+            const folderAggregations = results.aggregations.index.buckets.find((agg) => agg.key === folderIndex);
             expect(folderAggregations.doc_count).to.equal(2);
 
-            const documentAggregations = results.aggregations.index.buckets.find((agg) => agg.key === DocumentClass.__fullIndex);
+            const documentAggregations = results.aggregations.index.buckets.find((agg) => agg.key === documentIndex);
             expect(documentAggregations.doc_count).to.equal(1);
         });
     });

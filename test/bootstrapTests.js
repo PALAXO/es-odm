@@ -37,9 +37,12 @@ const client = new Client({ node: ES_URL });
 /*
  * Module exports
  */
-exports = module.exports = {
+module.exports = {
     //modules
     client,
+
+    createIndex,
+    deleteIndex,
 
     deleteData,
 
@@ -55,10 +58,8 @@ async function deleteData() {
     try {
         await client.deleteByQuery({
             index: `*`,
-            body: {
-                query: {
-                    match_all: {}
-                }
+            query: {
+                match_all: {}
             },
             refresh: true
         });
@@ -66,7 +67,143 @@ async function deleteData() {
         //not found exception
         //it's OK
     }
+
+    //Refresh indices
+    try {
+        await client.indices.refresh({
+            index: `*`
+        });
+    } catch (e) {
+        //not found exception
+        //it's OK
+    }
 }
+
+async function createIndex(alias, uuid) {
+    const indexParts = alias.split(`_`);
+    indexParts[1] += `-${uuid}`;
+    const index = indexParts.join(`_`);
+
+    await client.indices.create({
+        index: index
+    });
+    await client.indices.putAlias({
+        index: index,
+        name: alias,
+        is_write_index: true
+    });
+}
+
+async function deleteIndex(alias, uuid) {
+    const indexParts = alias.split(`_`);
+    indexParts[1] += `-${uuid}`;
+    const index = indexParts.join(`_`);
+
+    try {
+        await client.indices.delete({
+            index: index
+        });
+    } catch (e) {
+        //OK
+    }
+    try {
+        await client.indices.deleteAlias({
+            index: index,
+            name: alias,
+        });
+    } catch (e) {
+        //OK
+    }
+}
+
+/**
+ * Global beforeAll
+ * Prepare ES mappings
+ */
+before(async function() {
+    this.timeout(testTimeout);
+
+    await client.indices.delete({
+        index: `*`
+    });
+
+    await client.indices.create({
+        index: `test_users-abc123`,
+        settings: {
+            index: {
+                refresh_interval: -1
+            }
+        },
+        mappings: {
+            dynamic: `strict`,
+            properties: {
+                status: {
+                    type: `keyword`
+                },
+                name: {
+                    type: `keyword`
+                },
+                fullname: {
+                    type: `keyword`
+                }
+            }
+        }
+    });
+    await client.indices.create({
+        index: `test_documents-abc123_folder`,
+        settings: {
+            index: {
+                refresh_interval: -1
+            }
+        },
+        mappings: {
+            dynamic: `strict`,
+            properties: {
+                documentTitle: {
+                    type: `keyword`
+                },
+                html: {
+                    type: `keyword`
+                }
+            }
+        }
+    });
+    await client.indices.create({
+        index: `test_documents-abc123_d_default`,
+        settings: {
+            index: {
+                refresh_interval: -1
+            }
+        },
+        mappings: {
+            dynamic: `strict`,
+            properties: {
+                documentTitle: {
+                    type: `keyword`
+                },
+                html: {
+                    type: `keyword`
+                }
+            }
+        }
+    });
+
+    await client.indices.putAlias({
+        index: `test_users-abc123`,
+        name: `test_users`,
+        is_write_index: true
+    });
+    await client.indices.putAlias({
+        index: `test_documents-abc123_folder`,
+        name: `test_documents_folder`,
+        is_write_index: true
+    });
+    await client.indices.putAlias({
+        index: `test_documents-abc123_d_default`,
+        name: `test_documents_d_default`,
+        is_write_index: true
+    });
+});
 
 /**
  * Resources global beforeEach

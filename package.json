@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "2.7.1",
+  "version": "3.0.0",
   "description": "ODM",
   "keywords": [
     "circularo",
@@ -16,22 +16,29 @@
   "license": "GLWTS",
   "scripts": {
     "test": "mocha --recursive \"test/**/*.test.js\" --exit",
-    "lint": "eslint **/*.js"
+    "lint": "eslint **/*.js",
+    "coverage": "nyc npm run test"
+  },
+  "nyc": {
+    "exclude": "test/*",
+    "reporter": "lcov"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "7.14.0",
+    "@elastic/elasticsearch": "8.2.1",
     "@hapi/joi": "17.1.1",
     "bunyan": "1.8.15",
     "lodash": "4.17.21",
-    "nconf": "0.11.3",
-    "uuid": "8.3.2"
+    "nconf": "0.12.0",
+    "oboe": "2.1.5",
+    "uuid": "9.0.0"
   },
   "devDependencies": {
     "chai": "4.3.6",
     "chai-as-promised": "7.1.1",
-    "eslint": "7.32.0",
-    "eslint-plugin-mocha": "10.0.1",
-    "eslint-plugin-promise": "5.2.0",
-    "mocha": "9.2.0"
+    "eslint": "8.23.0",
+    "eslint-plugin-mocha": "10.1.0",
+    "eslint-plugin-promise": "6.0.1",
+    "mocha": "10.0.0",
+    "nyc": "15.1.0"
   }
 }

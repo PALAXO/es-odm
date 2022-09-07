@@ -1,7 +1,7 @@
 {
   "test": {
     "settings": {
-      "timeout": 30000
+      "timeout": 1800000
     }
   }
 }
