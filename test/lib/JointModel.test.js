@@ -12,15 +12,15 @@ describe(`JointModel class`, function() {
         it(`can't record model without correct index`, () => {
             const jointModel = new JointModel();
 
-            expect(() => jointModel.recordSearch({})).to.throw(`Model doesn't have specified alias!`);
-            expect(() => jointModel.recordSearch({ _alias: {} })).to.throw(`Model doesn't have specified alias!`);
+            expect(() => jointModel.recordSearch({})).to.throw(`OdmModel.__checkIfFullySpecified is not a function`);
+            expect(() => jointModel.recordSearch({ _alias: {} })).to.throw(`OdmModel.__checkIfFullySpecified is not a function`);
         });
 
         it(`can't record model with wildcard in index`, () => {
             const jointModel = new JointModel();
 
-            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()))).to.throw(`Model alias cannot contain wildcards!`);
-            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()).in(`?`))).to.throw(`Model alias cannot contain wildcards!`);
+            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()))).to.throw(`You cannot use 'recordSearch' with current tenant '*', full alias is '*_users'!`);
+            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()).in(`?`))).to.throw(`You cannot use 'recordSearch' with current tenant '?', full alias is '?_users'!`);
         });
 
         it(`can record correct model`, () => {

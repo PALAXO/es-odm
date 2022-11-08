@@ -1,4 +1,4 @@
-# ElasticSearch 7 Node.js ODM library
+# ElasticSearch 8 Node.js ODM library
 
 ## Basic information
  
