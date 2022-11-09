@@ -17,11 +17,10 @@ const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
 /**
  * @param name          {string}
  * @param schema        {Joi | void}
- * @param type          {string}
  * @param tenant        {string}
  * @returns             {BaseModelType}
  */
-function createClass(name, schema = Joi.object(), type = ``, tenant = `*`) {
+function createClass(name, schema = Joi.object(), tenant = `*`) {
     if (_.isNil(name) || !_.isString(name) || _.isEmpty(name)) {
         throw Error(`You have to specify an index name.`);
     } else if (_.isNil(tenant) || !_.isString(tenant) || _.isEmpty(tenant)) {
@@ -31,12 +30,9 @@ function createClass(name, schema = Joi.object(), type = ``, tenant = `*`) {
     }
 
     const properties = {
-        __schema: schema,
-
+        schema: schema,
         _tenant: tenant,
         _name: name,
-        _type: type,
-
         _immediateRefresh: true
     };
 

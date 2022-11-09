@@ -80,9 +80,7 @@ async function deleteData() {
 }
 
 async function createIndex(alias, uuid) {
-    const indexParts = alias.split(`_`);
-    indexParts[1] += `-${uuid}`;
-    const index = indexParts.join(`_`);
+    const index = `${alias}-${uuid}`;
 
     await client.indices.create({
         index: index
@@ -95,9 +93,7 @@ async function createIndex(alias, uuid) {
 }
 
 async function deleteIndex(alias, uuid) {
-    const indexParts = alias.split(`_`);
-    indexParts[1] += `-${uuid}`;
-    const index = indexParts.join(`_`);
+    const index = `${alias}-${uuid}`;
 
     try {
         await client.indices.delete({
@@ -150,26 +146,7 @@ before(async function() {
         }
     });
     await client.indices.create({
-        index: `test_documents-abc123_folder`,
-        settings: {
-            index: {
-                refresh_interval: -1
-            }
-        },
-        mappings: {
-            dynamic: `strict`,
-            properties: {
-                documentTitle: {
-                    type: `keyword`
-                },
-                html: {
-                    type: `keyword`
-                }
-            }
-        }
-    });
-    await client.indices.create({
-        index: `test_documents-abc123_d_default`,
+        index: `test_documents-abc123`,
         settings: {
             index: {
                 refresh_interval: -1
@@ -194,13 +171,8 @@ before(async function() {
         is_write_index: true
     });
     await client.indices.putAlias({
-        index: `test_documents-abc123_folder`,
-        name: `test_documents_folder`,
-        is_write_index: true
-    });
-    await client.indices.putAlias({
-        index: `test_documents-abc123_d_default`,
-        name: `test_documents_d_default`,
+        index: `test_documents-abc123`,
+        name: `test_documents`,
         is_write_index: true
     });
 });

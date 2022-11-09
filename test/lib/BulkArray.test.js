@@ -69,7 +69,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves data instances`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -98,7 +98,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance1._primary_term).not.to.be.undefined;
             expect(myInstance1._seq_no).not.to.be.undefined;
             const results1 = await bootstrapTest.client.get({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance1._id
             });
             expect(results1._version).to.equal(myInstance1._version);
@@ -113,7 +113,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance2._primary_term).not.to.be.undefined;
             expect(myInstance2._seq_no).not.to.be.undefined;
             const results2 = await bootstrapTest.client.get({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance2._id
             });
             expect(results2._version).to.equal(myInstance2._version);
@@ -127,7 +127,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves data instances without immediate refresh`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -162,7 +162,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves data instance with some ids specified and saved`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -200,7 +200,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance1._primary_term).not.to.be.undefined;
             expect(myInstance1._seq_no).not.to.be.undefined;
             const results1 = await bootstrapTest.client.get({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance1._id
             });
             expect(results1._id).to.equal(`first`);
@@ -216,7 +216,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance2._primary_term).not.to.be.undefined;
             expect(myInstance2._seq_no).not.to.be.undefined;
             const results2 = await bootstrapTest.client.get({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance2._id
             });
             expect(results2._version).to.equal(myInstance2._version);
@@ -231,7 +231,7 @@ describe(`BulkArray class`, function() {
             expect(myInstance3._primary_term).not.to.be.undefined;
             expect(myInstance3._seq_no).not.to.be.undefined;
             const results3 = await bootstrapTest.client.get({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance3._id
             });
             expect(results3._id).to.equal(`third`);
@@ -244,7 +244,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`can't use parameter 'useVersion' for not yet indexed records`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data1 = {
                 status: `:)`,
@@ -258,7 +258,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves array with specified version`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -281,7 +281,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`can't save array when sequence numbers are different`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -292,7 +292,7 @@ describe(`BulkArray class`, function() {
             await myInstance.save();
 
             await bootstrapTest.client.index({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance._id,
                 document: {
                     status: `:(`
@@ -310,7 +310,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`saves array with specified version but without sequence numbers, automatically fetches sequence numbers`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -333,7 +333,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`can't save array with specified incorrect version and without sequence numbers, automatically fetches sequence numbers`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -346,15 +346,13 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, savedInstance._id, savedInstance._version + 1);
 
             const bulk = new BulkArray(myInstance);
-            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' in alias '${savedInstance.constructor._alias}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
+            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' in alias '${savedInstance.constructor.alias}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
         });
     });
 
     describe(`delete()`, () => {
         let userObject1;
         let userObject2;
-        let folderDocument1;
-        let folderDocument2;
         let defaultDocument;
 
         beforeEach(async () => {
@@ -376,27 +374,12 @@ describe(`BulkArray class`, function() {
                 id: void 0,
                 refresh: true
             };
-            folderDocument1 = {
-                index: `test_documents_folder`,
-                document: {
-                    html: `folder 1`
-                },
-                id: `1folder`,
-                refresh: true
-            };
-            folderDocument2 = {
-                index: `test_documents_folder`,
-                document: {
-                    html: `folder 2`
-                },
-                id: `2folder`,
-                refresh: true
-            };
             defaultDocument = {
-                index: `test_documents_d_default`,
+                index: `test_documents`,
                 document: {
                     html: `d_default`
                 },
+                id: `document`,
                 refresh: true
             };
 
@@ -404,50 +387,40 @@ describe(`BulkArray class`, function() {
                 bootstrapTest.client.index(userObject1),
                 bootstrapTest.client.index(userObject2),
 
-                bootstrapTest.client.index(folderDocument1),
-                bootstrapTest.client.index(folderDocument2),
                 bootstrapTest.client.index(defaultDocument)
             ]);
         });
 
         it(`deletes data instances`, async () => {
-            const UserClass = createClass(`users`, void 0).in(`test`);
-            const DocumentClass = createClass(`documents`, void 0, `*`).in(`test`);
+            const UserClass = createClass(`users`).in(`test`);
+            const DocumentClass = createClass(`documents`).in(`test`);
 
             const myInstance1 = await UserClass.get(`ok`);
-            const myInstance2 = (await DocumentClass.find(`1folder`))[0];
-            const myInstance3 = (await DocumentClass.find(`2folder`))[0];
+            const myInstance2 = await DocumentClass.get(`document`);
 
-            const bulk = new BulkArray(myInstance1, myInstance2, myInstance3);
+            const bulk = new BulkArray(myInstance1, myInstance2);
             const results = await bulk.delete();
 
             expect(results.errors).to.be.false;
-            expect(results.items.length).to.equal(3);
+            expect(results.items.length).to.equal(2);
             expect(results.items[0].delete.result).to.equal(`deleted`);
             expect(results.items[1].delete.result).to.equal(`deleted`);
-            expect(results.items[2].delete.result).to.equal(`deleted`);
 
             const results1 = await bootstrapTest.client.exists({
-                index: myInstance1.constructor._alias,
+                index: myInstance1.constructor.alias,
                 id: myInstance1._id
             });
             expect(results1).to.be.false;
 
             const results2 = await bootstrapTest.client.exists({
-                index: myInstance2.constructor._alias,
+                index: myInstance2.constructor.alias,
                 id: myInstance2._id
             });
             expect(results2).to.be.false;
-
-            const results3 = await bootstrapTest.client.exists({
-                index: myInstance3.constructor._alias,
-                id: myInstance3._id
-            });
-            expect(results3).to.be.false;
         });
 
         it(`deletes only correct and saved data instances`, async () => {
-            const UserClass = createClass(`users`, void 0).in(`test`);
+            const UserClass = createClass(`users`).in(`test`);
 
             const myInstance1 = await UserClass.get(`ok`);
             const myInstance2 = new UserClass({}, `invalid`);
@@ -461,14 +434,14 @@ describe(`BulkArray class`, function() {
             expect(results.items[1].delete.result).to.equal(`not_found`);
 
             const results1 = await bootstrapTest.client.exists({
-                index: myInstance1.constructor._alias,
+                index: myInstance1.constructor.alias,
                 id: myInstance1._id
             });
             expect(results1).to.be.false;
         });
 
         it(`deletes array with specified version`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -482,14 +455,14 @@ describe(`BulkArray class`, function() {
             await bulk.delete(true);
 
             const exists = await bootstrapTest.client.exists({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance._id
             });
             expect(exists).to.be.false;
         });
 
         it(`can't delete array when sequence numbers are different`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -500,7 +473,7 @@ describe(`BulkArray class`, function() {
             await myInstance.save();
 
             await bootstrapTest.client.index({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance._id,
                 document: {
                     status: `:(`
@@ -519,7 +492,7 @@ describe(`BulkArray class`, function() {
         });
 
         it(`deletes array with specified version but without sequence numbers, automatically fetches sequence numbers`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -535,14 +508,14 @@ describe(`BulkArray class`, function() {
             await bulk.delete(true);
 
             const exists = await bootstrapTest.client.exists({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: myInstance._id
             });
             expect(exists).to.be.false;
         });
 
         it(`can't delete array with specified incorrect version and without sequence numbers, automatically fetches sequence numbers`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -555,13 +528,13 @@ describe(`BulkArray class`, function() {
             const myInstance = new MyClass(data, savedInstance._id, savedInstance._version + 1);
             const bulk = new BulkArray(myInstance);
 
-            await expect(bulk.delete(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' in alias '${savedInstance.constructor._alias}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
+            await expect(bulk.delete(true)).to.be.eventually.rejectedWith(`For item with id '${savedInstance._id}' in alias '${savedInstance.constructor.alias}', specified version '${savedInstance._version + 1}', another version '${savedInstance._version}' was found!`);
         });
     });
 
     describe(`reload()`, () => {
         it(`reloads bulk array`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data = {
                 status: `:)`,
@@ -581,7 +554,7 @@ describe(`BulkArray class`, function() {
             const oldSeqNo2 = myInstance2._seq_no;
 
             await bootstrapTest.client.index({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: `ok`,
                 document: {
                     status: `:D`,
@@ -591,7 +564,7 @@ describe(`BulkArray class`, function() {
                 refresh: true
             });
             await bootstrapTest.client.index({
-                index: MyClass._alias,
+                index: MyClass.alias,
                 id: `ko`,
                 document: {
                     status: `:/`,
@@ -621,7 +594,7 @@ describe(`BulkArray class`, function() {
 
     describe(`functional tests`, () => {
         it(`Bulk status test`, async () => {
-            const MyClass = createClass(`users`, void 0).in(`test`);
+            const MyClass = createClass(`users`).in(`test`);
 
             const data1 = {
                 status: `:)`,

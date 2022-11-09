@@ -12,33 +12,29 @@
      - Thanks to this, we can create new index, migrate data from the original one, than switch the aliases and delete the original one.
      - And the index are still in human-readable format
 
- - Alias can be consisted from up to three parts:
-   - tenant (AKA prefix) - required, defaults to `*`
-   - name - required, main index name
-   - type (AKA suffix) - optional, defaults to `` (empty)
+ - Alias consist from two parts:
+   - tenant (AKA prefix) - defaults to `*`
+   - name - main index name
  - Final alias looks like this:
-   - `tenant_name[_type]`
+   - `tenant_name`
 
 #### Work with aliases
  - Alias name is specified when model is created, like this - `createClass('myIndex')`
- - Tenant can be specified using `createClass('myIndex', void 0, void 0, 'myTenant')`
+ - Tenant can be specified using `createClass('myIndex', void 0, 'myTenant')`
    - or later by using `.in('myTenant')`
- - Index type can be specified using `createClass('myIndex', void 0, 'myType')` 
-   - or later by using `.type('myType')`
- - Both `type('type')` and `in('tenant')` (and `immediateRefresh(bool)` as well) functions creates new ODM model with updated values, original ODM remains unchanged
+ - Function `in('tenant')` (and `immediateRefresh(bool)` as well) creates new ODM model with updated values, original ODM remains unchanged
  - example:
-   - `createClass('myIndex').in('default').type('myType')` -> `default_myIndex_myType`
+   - `createClass('myIndex').in('default')` -> `default_myIndex`
    - `createClass('myIndex')` -> `*_myIndex`
-   - `createClass('myIndex').in('tenant')` -> `tenant_myIndex`
-   - `createClass('myIndex', void 0, 'type', 'tenant')` -> `tenant_myIndex_type`
-   - `createClass('myIndex', void 0, 'type', 'tenant').in('changedTenant').type('changedType')` -> `changedTenant_myIndex_changedType`
+   - `createClass('myIndex', void 0, 'tenant')` -> `tenant_myIndex`
+   - `createClass('myIndex', void 0, 'tenant').in('changedTenant')` -> `changedTenant_myIndex`
    
  - When creating a new instance (or performing some operations), the alias cannot contain any wildcard
-   - it means you must fully specify the tenant and type (if type is used)
+   - it means you must fully specify the tenant
    
 ### Underlying index
  - Underlying index is in a very similar format, just also contains unique identifier:
-    - `tenant_name-id_type`
+    - `tenant_name-id`
 
  - This library is made to use aliases, but technically speaking it should be also working with ES indices directly (or even with mixture of indices and aliases)
    - It is necessary to avoid any conflicts between indices / aliases
@@ -48,16 +44,15 @@
  - `const { createClass, BulkArray, BaseModel, JointModel, esClient, setClient, esErrors, setLoggerConfig, setLoggerUidFunction } = require('odm');`
  - `createClass` function creates new class
    - Each class contains several properties
-     - `_tenant`, `_name`, `_type`, `__schema`, `_alias` and `_immediateRefresh`
+     - `schema`, `alias`, `_tenant`, `_name` and `_immediateRefresh`
    - Class static functions profit from those properties
      - e.g. `static search()` uses them to get alias
      - You may write your own static function, which will use those properties
        - Or rewrite existing functions
          - Which may influence another functions
        - Or redefine class properties
-     - This way we can define model functions specific to each document type
    - Instances have access to those properties / functions
-     - `myInstance.constructor._alias`
+     - `myInstance.constructor.alias`
      - And they use them during ES operations
        - eq. to validate data, ...
    - Whenever we need new / independent class, we must either create a new one or clone an existing one
@@ -80,16 +75,9 @@
 #### Class usage
 
 ##### Create new class
- - To create new class, call `createClass(name, ?schema, ?type, ?tenant)`:
+ - To create new class, call `createClass(name, ?schema, ?tenant)`:
    - `name` - essential, it must be specified
    - `schema` - may be undefined or Joi object, it is there, so we can do additional validations
-   - `type` - Serves as part of the index (suffix)
-     - By default, it is not used (empty string, doesn't appear in full alias)
-       - You can rewrite it later by using `.type('newType')`
-         - It will create inherited class
-         - `const SpecificTypeClass = MyClass.type('newType');`
-       - You can use type `*` to search in multiple indices at once
-         - Found records will have correctly set types
    - `tenant` - Serves as part of the index (prefix)
      - This is required and cannot contain underscores (`_`)
      - By default, it is `*`
@@ -103,15 +91,13 @@
  - Class can be modified / cloned using:
    - `in(tenant)`
      - Returns class clone with tenant changed to given value
-   - `type(type)`
-     - Returns class clone with type changed to given value
    - `immediateRefresh(bool)`
      - Returns class clone with immediate refresh set to given value
        - By default, new classes (and its instances) does perform `refresh: true` with all write operations -> You can use this to disable it
    - `clone(?changes)`
      - Clones class
      - `changes` is optional object to set cloned class properties
-     - This method is internally used by `in()`, `type()` and `immediateRefresh()`
+     - This method is internally used by `in()` and `immediateRefresh()`
      - You should not need to use it
  
  - Cloning class means:
@@ -153,6 +139,9 @@
      - Returns ES response
      - `useVersion` - Checks if version match
                           - uses sequence numbers internally, if not presented, it will fetch them and checks version automatically
+     
+   - `async reload()`
+     - Reloads all instances in bulk array
          
 #### Examples:
   ```
@@ -192,18 +181,18 @@
 #### Functions / Methods
 
 ##### Internal getters
- - `static get _alias`
+ - `static get alias`
    - Returns class full alias, usable for ES queries
-   - It consists of tenant, name and (optionally) index
+   - It consists of tenant and name
 
 ##### Class level API
- - `static async search(body, ?from, ?size, ?source, ?explicitScroll)`
+ - `static async search(body, ?from, ?size, ?source, ?explicitScroll, ?additional)`
    - Performs ES search
    - Returns `BulkArray` of instances
    - Used by another static functions
      - Redefining this function will affect their behavior
    - User must specify `body`
-     - `_alias` is already defined in the class
+     - `alias` is already defined in the class
    - `from` and `size` are optional
      - Returns all results if `from` / `size` are not specified, no matter how many there are
        - Uses scroll API
@@ -214,7 +203,7 @@
    - Returns ES response
 
  - `static async findAll()`
-   - Finds all entries in ES, matching class `_alias`
+   - Finds all entries in ES, matching class `alias`
    - Uses `this.search()`
      - Returns `BulkArray`
      
@@ -307,12 +296,6 @@
  - `static async refresh()`
    - Refreshed current index / indices
    
- - `static hasTypes()`
-   - Checks if ODM has unspecified type
-   
- - `static async getTypes()`
-   - Returns array of ODMs created by finding all existing types to original ODM
-   
 ##### Instance level API
  - `async save(?useVersion)`
    - saves or re-saves instance
@@ -351,20 +334,34 @@
    - Clones class using `clone()`
    - Sets given tenant
  
- - `static type(newType)`
-   - Clones class using `clone()`
-   - Sets given type
- 
  - `static immediateRefresh(newRefresh)`
    - Clones class using `clone()`
    - Sets given refresh mode
 
 #### Other
- - `static async _afterSearch(instances)`
+- `static _parseIndex(index)`
+    - Parses given index (or even alias) and returns its parts
+
+- `static __checkIfFullySpecified(functionName)`
+    - Checks if current class is fully specified, meaning it doesn't contain any wildcard in alias
+    - Throws otherwise
+
+- `static __getConstructor(searchResult, constructorCache)`
+    - Returns the correct class (constructor) for given search result
+
+- `static _alterSearch(body)`
+    - Alters the search function query (and also query of other functions that use the query)
+    - By default, just passes the body without any change, but can be rewritten
+
+- `static _unpackData(source)`
+    - Alters the fetched ES documents before the instance is created from them
+    - By default, just passes the source without any change, but can be rewritten
+
+- `async _packData(cache)`
+    - Alters the instance data before it is saved to ES
+    - By default, just passes the instance data without any change, but can be rewritten
+  
+ - `static async _afterSearch(instances, ?cache)`
    - Special function called for each record founded by search / find / findAll / get
    - By default, it is empty, but you can overwrite it in your code
-
- - `static _parseIndex(index)`
-   - Parses given index (or even alias) and returns its parts
-   - Index must match (have the same `name` part) the ODM
  
