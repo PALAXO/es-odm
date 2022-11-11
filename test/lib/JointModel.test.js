@@ -12,15 +12,15 @@ describe(`JointModel class`, function() {
         it(`can't record model without correct index`, () => {
             const jointModel = new JointModel();
 
-            expect(() => jointModel.recordSearch({})).to.throw(`Model doesn't have specified alias!`);
-            expect(() => jointModel.recordSearch({ _alias: {} })).to.throw(`Model doesn't have specified alias!`);
+            expect(() => jointModel.recordSearch({})).to.throw(`OdmModel.__checkIfFullySpecified is not a function`);
+            expect(() => jointModel.recordSearch({ alias: {} })).to.throw(`OdmModel.__checkIfFullySpecified is not a function`);
         });
 
         it(`can't record model with wildcard in index`, () => {
             const jointModel = new JointModel();
 
-            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()))).to.throw(`Model alias cannot contain wildcards!`);
-            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()).in(`?`))).to.throw(`Model alias cannot contain wildcards!`);
+            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()))).to.throw(`You cannot use 'recordSearch' with current tenant '*', full alias is '*_users'!`);
+            expect(() => jointModel.recordSearch(createClass(`users`, Joi.object()).in(`?`))).to.throw(`You cannot use 'recordSearch' with current tenant '?', full alias is '?_users'!`);
         });
 
         it(`can record correct model`, () => {
@@ -28,10 +28,10 @@ describe(`JointModel class`, function() {
             const MyClass = createClass(`users`, Joi.object()).in(`test`);
 
             const rewritten = jointModel.recordSearch(MyClass);
-            expect(rewritten._alias).to.equal(MyClass._alias);
+            expect(rewritten.alias).to.equal(MyClass.alias);
             expect(jointModel.models.length).to.equal(1);
-            expect(jointModel.models[0].alias).to.equal(MyClass._alias);
-            expect(jointModel.models[0].model._alias).to.equal(MyClass._alias);
+            expect(jointModel.models[0].alias).to.equal(MyClass.alias);
+            expect(jointModel.models[0].model.alias).to.equal(MyClass.alias);
 
             const query1 = {
                 query: {
@@ -58,21 +58,21 @@ describe(`JointModel class`, function() {
         it(`can record multiple models`, () => {
             const jointModel = new JointModel();
             const MyClass1 = createClass(`users`, Joi.object()).in(`test`);
-            const MyClass2 = createClass(`documents`, Joi.object(), `folder`).in(`test`);
+            const MyClass2 = createClass(`documents`, Joi.object()).in(`test`);
 
             const rewritten1 = jointModel.recordSearch(MyClass1);
-            expect(rewritten1._alias).to.equal(MyClass1._alias);
+            expect(rewritten1.alias).to.equal(MyClass1.alias);
             expect(jointModel.models.length).to.equal(1);
-            expect(jointModel.models[0].alias).to.equal(MyClass1._alias);
-            expect(jointModel.models[0].model._alias).to.equal(MyClass1._alias);
+            expect(jointModel.models[0].alias).to.equal(MyClass1.alias);
+            expect(jointModel.models[0].model.alias).to.equal(MyClass1.alias);
 
             const rewritten2 = jointModel.recordSearch(MyClass2);
-            expect(rewritten2._alias).to.equal(MyClass2._alias);
+            expect(rewritten2.alias).to.equal(MyClass2.alias);
             expect(jointModel.models.length).to.equal(2);
-            expect(jointModel.models[0].alias).to.equal(MyClass1._alias);
-            expect(jointModel.models[0].model._alias).to.equal(MyClass1._alias);
-            expect(jointModel.models[1].alias).to.equal(MyClass2._alias);
-            expect(jointModel.models[1].model._alias).to.equal(MyClass2._alias);
+            expect(jointModel.models[0].alias).to.equal(MyClass1.alias);
+            expect(jointModel.models[0].model.alias).to.equal(MyClass1.alias);
+            expect(jointModel.models[1].alias).to.equal(MyClass2.alias);
+            expect(jointModel.models[1].model.alias).to.equal(MyClass2.alias);
 
             const query1 = {
                 query: {
@@ -110,7 +110,7 @@ describe(`JointModel class`, function() {
             expect(jointModel.models[1].queries[0]).to.deep.equal(query1.query);
             expect(jointModel.models[1].queries[1]).to.deep.equal(query3.query);
 
-            const MyClass3 = createClass(`documents`, Joi.object(), `folder`).in(`default`);
+            const MyClass3 = createClass(`documents`, Joi.object()).in(`default`);
             const rewritten3 = jointModel.recordSearch(MyClass3);
 
             const query4 = {
@@ -134,23 +134,23 @@ describe(`JointModel class`, function() {
 
             const MyClass1 = createClass(`users`, Joi.object()).in(`test`);
             const rewritten1 = jointModel.recordSearch(MyClass1);
-            expect(rewritten1._alias).to.equal(MyClass1._alias);
+            expect(rewritten1.alias).to.equal(MyClass1.alias);
 
-            const MyClass2 = createClass(`documents`, Joi.object(), `folder`).in(`test`);
+            const MyClass2 = createClass(`documents`, Joi.object()).in(`test`);
             const rewritten2 = jointModel.recordSearch(MyClass2);
-            expect(rewritten2._alias).to.equal(MyClass2._alias);
+            expect(rewritten2.alias).to.equal(MyClass2.alias);
 
-            const MyClass3 = createClass(`documents`, Joi.object(), `folder`).in(`test`);
+            const MyClass3 = createClass(`documents`, Joi.object()).in(`test`);
             const rewritten3 = jointModel.recordSearch(MyClass3);
-            expect(rewritten3._alias).to.equal(MyClass3._alias);
+            expect(rewritten3.alias).to.equal(MyClass3.alias);
 
             const MyClass4 = createClass(`users`, Joi.object()).in(`test`);
             const rewritten4 = jointModel.recordSearch(MyClass4);
-            expect(rewritten4._alias).to.equal(MyClass4._alias);
+            expect(rewritten4.alias).to.equal(MyClass4.alias);
 
             expect(jointModel.models.length).to.equal(2);
-            expect(jointModel.models[0].alias).to.equal(MyClass1._alias);
-            expect(jointModel.models[1].alias).to.equal(MyClass2._alias);
+            expect(jointModel.models[0].alias).to.equal(MyClass1.alias);
+            expect(jointModel.models[1].alias).to.equal(MyClass2.alias);
 
             const query1 = {
                 query: {
@@ -193,8 +193,6 @@ describe(`JointModel class`, function() {
     describe(`search()`, () => {
         let userObject1;
         let userObject2;
-        let folderDocument1;
-        let folderDocument2;
         let defaultDocument;
 
         beforeEach(async () => {
@@ -216,36 +214,18 @@ describe(`JointModel class`, function() {
                 id: void 0,
                 refresh: true
             };
-            folderDocument1 = {
-                index: `test_documents_folder`,
-                document: {
-                    html: `folder 1`
-                },
-                id: `1folder`,
-                refresh: true
-            };
-            folderDocument2 = {
-                index: `test_documents_folder`,
-                document: {
-                    html: `folder 2`
-                },
-                id: `2folder`,
-                refresh: true
-            };
             defaultDocument = {
-                index: `test_documents_d_default`,
+                index: `test_documents`,
                 document: {
                     html: `d_default`
                 },
+                id: `document`,
                 refresh: true
             };
 
             await Promise.all([
                 bootstrapTest.client.index(userObject1),
                 bootstrapTest.client.index(userObject2),
-
-                bootstrapTest.client.index(folderDocument1),
-                bootstrapTest.client.index(folderDocument2),
                 bootstrapTest.client.index(defaultDocument)
             ]);
         });
@@ -259,7 +239,7 @@ describe(`JointModel class`, function() {
         it(`can't search with incorrect body`, async () => {
             const jointModel = new JointModel();
 
-            const MyClass = jointModel.recordSearch(createClass(`users`, void 0).in(`test`));
+            const MyClass = jointModel.recordSearch(createClass(`users`).in(`test`));
             await MyClass.search({
                 query: {
                     match: {
@@ -274,7 +254,7 @@ describe(`JointModel class`, function() {
         it(`searches with single recorded query`, async () => {
             const jointModel = new JointModel();
 
-            const MyClass = jointModel.recordSearch(createClass(`users`, void 0).in(`test`));
+            const MyClass = jointModel.recordSearch(createClass(`users`).in(`test`));
             await MyClass.search({
                 query: {
                     match: {
@@ -298,7 +278,7 @@ describe(`JointModel class`, function() {
         it(`will ignore query in JointModel search`, async () => {
             const jointModel = new JointModel();
 
-            const MyClass = jointModel.recordSearch(createClass(`users`, void 0).in(`test`));
+            const MyClass = jointModel.recordSearch(createClass(`users`).in(`test`));
             await MyClass.search({
                 query: {
                     match: {
@@ -326,7 +306,7 @@ describe(`JointModel class`, function() {
         it(`searches with multiple recorded queries`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
             let userAfterFunctionCalled = false;
             OriginalUserClass._afterSearch = function() {
                 userAfterFunctionCalled = true;
@@ -340,19 +320,7 @@ describe(`JointModel class`, function() {
                 }
             });
 
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            let folderAfterFunctionCalled = false;
-            OriginalFolderClass._afterSearch = function() {
-                folderAfterFunctionCalled = true;
-            };
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
-            await FolderClass.search({
-                query: {
-                    match_all: {}
-                }
-            });
-
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
             let documentAfterFunctionCalled = false;
             OriginalDocumentClass._afterSearch = function() {
                 documentAfterFunctionCalled = true;
@@ -360,32 +328,21 @@ describe(`JointModel class`, function() {
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             const results = await jointModel.search();
-            expect(results.length).to.equal(3);
-            expect(results._total).to.equal(3);
+            expect(results.length).to.equal(1);
+            expect(results._total).to.equal(1);
 
             expect(userAfterFunctionCalled).to.be.true;
             const userInstances = results.filter((instance) => {
-                return instance.constructor._alias === UserClass._alias;
+                return instance.constructor.alias === UserClass.alias;
             });
             expect(userInstances.length).to.equal(1);
             expect(userInstances[0]).to.be.instanceOf(OriginalUserClass);
             expect(userInstances[0].status).to.equal(userObject1.document.status);
             expect(userInstances[0].name).to.equal(userObject1.document.name);
 
-            expect(folderAfterFunctionCalled).to.be.true;
-            const folderInstances = results.filter((instance) => {
-                return instance.constructor._alias === FolderClass._alias;
-            });
-            expect(folderInstances.length).to.equal(2);
-            const expectedValues = [folderDocument1.document.html, folderDocument2.document.html];
-            for (const folderInstance of folderInstances) {
-                expect(folderInstance).to.be.instanceOf(OriginalFolderClass);
-                expect(expectedValues).to.include(folderInstance.html);
-            }
-
             expect(documentAfterFunctionCalled).to.be.false;
             const documentInstances = results.filter((instance) => {
-                return instance.constructor._alias === DocumentClass._alias;
+                return instance.constructor.alias === DocumentClass.alias;
             });
             expect(documentInstances.length).to.equal(0);
         });
@@ -393,35 +350,23 @@ describe(`JointModel class`, function() {
         it(`searches with multiple recorded queries again`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
             let userAfterFunctionCalled = false;
             OriginalUserClass._afterSearch = function() {
                 userAfterFunctionCalled = true;
             };
 
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            let folderAfterFunctionCalled = false;
-            OriginalFolderClass._afterSearch = function() {
-                folderAfterFunctionCalled = true;
-            };
-
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
             let documentAfterFunctionCalled = false;
             OriginalDocumentClass._afterSearch = function() {
                 documentAfterFunctionCalled = true;
             };
 
             const UserClass = jointModel.recordSearch(OriginalUserClass);
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             await Promise.all([
                 UserClass.search({
-                    query: {
-                        match_all: {}
-                    }
-                }),
-                FolderClass.search({
                     query: {
                         match_all: {}
                     }
@@ -434,30 +379,21 @@ describe(`JointModel class`, function() {
             ]);
 
             const results = await jointModel.search();
-            expect(results.length).to.equal(5);
-            expect(results._total).to.equal(5);
+            expect(results.length).to.equal(3);
+            expect(results._total).to.equal(3);
 
             expect(userAfterFunctionCalled).to.be.true;
             const userInstances = results.filter((instance) => {
-                return instance.constructor._alias === UserClass._alias;
+                return instance.constructor.alias === UserClass.alias;
             });
             expect(userInstances.length).to.equal(2);
             for (const instance of userInstances) {
                 expect(instance).to.be.instanceOf(OriginalUserClass);
             }
 
-            expect(folderAfterFunctionCalled).to.be.true;
-            const folderInstances = results.filter((instance) => {
-                return instance.constructor._alias === FolderClass._alias;
-            });
-            expect(folderInstances.length).to.equal(2);
-            for (const instance of folderInstances) {
-                expect(instance).to.be.instanceOf(OriginalFolderClass);
-            }
-
             expect(documentAfterFunctionCalled).to.be.true;
             const documentInstances = results.filter((instance) => {
-                return instance.constructor._alias === DocumentClass._alias;
+                return instance.constructor.alias === DocumentClass.alias;
             });
             expect(documentInstances.length).to.equal(1);
             for (const instance of documentInstances) {
@@ -468,21 +404,14 @@ describe(`JointModel class`, function() {
         it(`searches with size specified`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
 
             const UserClass = jointModel.recordSearch(OriginalUserClass);
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             await Promise.all([
                 UserClass.search({
-                    query: {
-                        match_all: {}
-                    }
-                }),
-                FolderClass.search({
                     query: {
                         match_all: {}
                     }
@@ -496,27 +425,20 @@ describe(`JointModel class`, function() {
 
             const results = await jointModel.search(void 0, 0, 1);
             expect(results.length).to.equal(1);
-            expect(results._total).to.equal(5);
+            expect(results._total).to.equal(3);
         });
 
         it(`searches with from specified`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
 
             const UserClass = jointModel.recordSearch(OriginalUserClass);
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             await Promise.all([
                 UserClass.search({
-                    query: {
-                        match_all: {}
-                    }
-                }),
-                FolderClass.search({
                     query: {
                         match_all: {}
                     }
@@ -529,28 +451,21 @@ describe(`JointModel class`, function() {
             ]);
 
             const results = await jointModel.search({}, 1);
-            expect(results.length).to.equal(4);
-            expect(results._total).to.equal(5);
+            expect(results.length).to.equal(2);
+            expect(results._total).to.equal(3);
         });
 
         it(`searches with size and from specified`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
 
             const UserClass = jointModel.recordSearch(OriginalUserClass);
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             await Promise.all([
                 UserClass.search({
-                    query: {
-                        match_all: {}
-                    }
-                }),
-                FolderClass.search({
                     query: {
                         match_all: {}
                     }
@@ -564,27 +479,20 @@ describe(`JointModel class`, function() {
 
             const results = await jointModel.search(void 0, 1, 2);
             expect(results.length).to.equal(2);
-            expect(results._total).to.equal(5);
+            expect(results._total).to.equal(3);
         });
 
         it(`searches for plain objects`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
 
             const UserClass = jointModel.recordSearch(OriginalUserClass);
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             await Promise.all([
                 UserClass.search({
-                    query: {
-                        match_all: {}
-                    }
-                }),
-                FolderClass.search({
                     query: {
                         match_all: {}
                     }
@@ -597,31 +505,24 @@ describe(`JointModel class`, function() {
             ]);
 
             const results = await jointModel.search(void 0, void 0, void 0, true);
-            expect(results.length).to.equal(5);
+            expect(results.length).to.equal(3);
             expect(results._total).to.be.undefined;
             for (const result of results) {
-                expect(result.constructor._alias).to.be.undefined;
+                expect(result.constructor.alias).to.be.undefined;
             }
         });
 
         it(`searches with aggregation query`, async () => {
             const jointModel = new JointModel();
 
-            const OriginalUserClass = createClass(`users`, void 0).in(`test`);
-            const OriginalFolderClass = createClass(`documents`, void 0, `folder`).in(`test`);
-            const OriginalDocumentClass = createClass(`documents`, void 0, `d_default`).in(`test`);
+            const OriginalUserClass = createClass(`users`).in(`test`);
+            const OriginalDocumentClass = createClass(`documents`).in(`test`);
 
             const UserClass = jointModel.recordSearch(OriginalUserClass);
-            const FolderClass = jointModel.recordSearch(OriginalFolderClass);
             const DocumentClass = jointModel.recordSearch(OriginalDocumentClass);
 
             await Promise.all([
                 UserClass.search({
-                    query: {
-                        match_all: {}
-                    }
-                }),
-                FolderClass.search({
                     query: {
                         match_all: {}
                     }
@@ -642,17 +543,14 @@ describe(`JointModel class`, function() {
                     }
                 }
             });
-            expect(results.length).to.equal(5);
-            expect(results._total).to.equal(5);
-            expect(results.aggregations.index.buckets.length).to.equal(3);
+            expect(results.length).to.equal(3);
+            expect(results._total).to.equal(3);
+            expect(results.aggregations.index.buckets.length).to.equal(2);
 
-            const [userIndex, folderIndex, documentIndex] = await Promise.all([UserClass.getIndex(), FolderClass.getIndex(), DocumentClass.getIndex()]);
+            const [userIndex, documentIndex] = await Promise.all([UserClass.getIndex(), DocumentClass.getIndex()]);
 
             const userAggregations = results.aggregations.index.buckets.find((agg) => agg.key === userIndex);
             expect(userAggregations.doc_count).to.equal(2);
-
-            const folderAggregations = results.aggregations.index.buckets.find((agg) => agg.key === folderIndex);
-            expect(folderAggregations.doc_count).to.equal(2);
 
             const documentAggregations = results.aggregations.index.buckets.find((agg) => agg.key === documentIndex);
             expect(documentAggregations.doc_count).to.equal(1);
