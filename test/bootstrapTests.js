@@ -13,7 +13,6 @@ const ES_URL = nconf.get(`es:url`);
  * Chai bootstrap
  */
 chai.use(chaiAsPromised);
-chai.should();
 
 /*
  * Configuration bootstrap

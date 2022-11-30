@@ -617,18 +617,6 @@ describe(`BaseModel class`, function() {
             }
         });
 
-        it(`normally searches when 0 is passed as scroll timeout`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-
-            const results = await MyClass.search({
-                query: {
-                    match_all: {}
-                }
-            }, void 0, void 0, void 0, 0);
-            expect(results.length).to.be.greaterThan(0);
-            expect(results.scrollId).to.be.undefined;
-        });
-
         it(`searches and manually scrolls by max sizes (10k)`, async () => {
             await bootstrapTest.deleteData();
 
@@ -662,7 +650,7 @@ describe(`BaseModel class`, function() {
                         order: `asc`
                     }
                 }
-            }, void 0, void 0, void 0, 10);
+            }, void 0, 10000, void 0, 10);
             expect(results.length).to.equal(10000);
             expect(results.scrollId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_00000`);
@@ -723,7 +711,7 @@ describe(`BaseModel class`, function() {
                         order: `asc`
                     }
                 }
-            }, void 0, void 0, `name`, 10);
+            }, void 0, 10000, `name`, 10);
             expect(results.length).to.equal(10000);
             expect(results.scrollId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_00000`);
@@ -905,6 +893,529 @@ describe(`BaseModel class`, function() {
             expect(results.scrollId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_00550`);
             expect(results[49]._id).to.equal(`id_00599`);
+        });
+    });
+
+    describe(`static *bulkIterator()`, () => {
+        let userObject1;
+        let userObject2;
+        let defaultDocument1;
+        let defaultDocument2;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                document: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                document: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            defaultDocument1 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document1`,
+                refresh: true
+            };
+            defaultDocument2 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document2`,
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(defaultDocument1),
+                bootstrapTest.client.index(defaultDocument2)
+            ]);
+        });
+
+        it(`tests higher amount of data`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await MyClass.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            let total = 0;
+            let bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+            }
+            expect(total).to.equal(size);
+
+            total = 0;
+            const bulkSize = 100;
+            bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, bulkSize);
+            for await (const bulk of bulks) {
+                total += bulk.length;
+                expect(bulk.length).to.equal(bulkSize);
+            }
+            expect(total).to.equal(size);
+        });
+
+        it(`iterates without any query specified`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const bulks = MyClass.bulkIterator();
+            const possibleValues = [userObject1.document.name, userObject2.document.name];
+            for await (const bulk of bulks) {
+                for (const result of bulk) {
+                    expect(possibleValues).to.include(result.name);
+                    expect(result).to.be.an.instanceOf(MyClass);
+
+                    expect(result._id).to.be.a(`string`);
+                    expect(result._primary_term).to.be.a(`number`);
+                    expect(result._seq_no).to.be.a(`number`);
+                    expect(result._version).to.be.a(`number`);
+                    expect(result._score).to.be.a(`number`);
+                }
+            }
+        });
+
+        it(`iterates with match_all`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            const possibleValues = [userObject1.document.name, userObject2.document.name];
+            for await (const bulk of bulks) {
+                expect(bulk.length).to.equal(2);
+                expect(bulk._total).to.equal(2);
+                for (const result of bulk) {
+                    expect(possibleValues).to.include(result.name);
+                    expect(result).to.be.an.instanceOf(MyClass);
+
+                    expect(result._id).to.be.a(`string`);
+                    expect(result._primary_term).to.be.a(`number`);
+                    expect(result._seq_no).to.be.a(`number`);
+                    expect(result._version).to.be.a(`number`);
+                    expect(result._score).to.be.a(`number`);
+                }
+            }
+        });
+
+        it(`iterates using non existing property`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match: {
+                        unknown: `whatever`
+                    }
+                }
+            });
+
+            for await (const bulk of bulks) {
+                expect(bulk.length).to.equal(0);
+                expect(bulk._total).to.equal(0);
+            }
+        });
+
+        it(`won't find anything when iterating using incorrect tenant`, async () => {
+            const MyClass = createClass(`documents`).in(`*incorrect`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            for await (const bulk of bulks) {
+                expect(bulk.length).to.equal(0);
+                expect(bulk._total).to.equal(0);
+            }
+        });
+
+        it(`iterates without source fields`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            }, false);
+
+            for await (const bulk of bulks) {
+                expect(bulk.length).to.equal(2);
+
+                expect(bulk[0]._id).not.to.be.undefined;
+                expect(bulk[0]._version).not.to.be.undefined;
+                expect(bulk[0]._primary_term).not.to.be.undefined;
+                expect(bulk[0]._seq_no).not.to.be.undefined;
+                expect(bulk[0]._score).not.to.be.undefined;
+                expect(bulk[0]._source).to.be.undefined;
+
+                expect(bulk[1]._id).not.to.be.undefined;
+                expect(bulk[1]._version).not.to.be.undefined;
+                expect(bulk[1]._primary_term).not.to.be.undefined;
+                expect(bulk[1]._seq_no).not.to.be.undefined;
+                expect(bulk[1]._score).not.to.be.undefined;
+                expect(bulk[1]._source).to.be.undefined;
+            }
+        });
+
+        it(`iterates for specific field only`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            }, [`name`]);
+
+            for await (const bulk of bulks) {
+                expect(bulk.length).to.equal(2);
+
+                expect(bulk[0]._id).not.to.be.undefined;
+                expect(bulk[0]._version).not.to.be.undefined;
+                expect(bulk[0]._primary_term).not.to.be.undefined;
+                expect(bulk[0]._seq_no).not.to.be.undefined;
+                expect(bulk[0]._score).not.to.be.undefined;
+                expect(bulk[0]._source).not.to.be.undefined;
+                expect(bulk[0]._source.name).not.to.be.undefined;
+                expect(bulk[0]._source.status).to.be.undefined;
+
+                expect(bulk[1]._id).not.to.be.undefined;
+                expect(bulk[1]._version).not.to.be.undefined;
+                expect(bulk[1]._primary_term).not.to.be.undefined;
+                expect(bulk[1]._seq_no).not.to.be.undefined;
+                expect(bulk[1]._score).not.to.be.undefined;
+                expect(bulk[1]._source).not.to.be.undefined;
+                expect(bulk[1]._source.name).not.to.be.undefined;
+                expect(bulk[1]._source.status).to.be.undefined;
+            }
+        });
+
+        it(`iterates for documents with size parameter`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, 1);
+
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            let total = 0;
+            for await (const bulk of bulks) {
+                total++;
+                expect(bulk.length).to.equal(1);
+                expect(possibleValues).to.include(bulk[0].html);
+            }
+            expect(total).to.equal(2);
+        });
+
+        it(`iterates for documents with size parameter in body`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                },
+                size: 1
+            });
+
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            let total = 0;
+            for await (const bulk of bulks) {
+                total++;
+                expect(bulk.length).to.equal(1);
+                expect(possibleValues).to.include(bulk[0].html);
+            }
+            expect(total).to.equal(2);
+        });
+    });
+
+    describe(`static *itemIterator()`, () => {
+        let userObject1;
+        let userObject2;
+        let defaultDocument1;
+        let defaultDocument2;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                document: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                document: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            defaultDocument1 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document1`,
+                refresh: true
+            };
+            defaultDocument2 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document2`,
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(defaultDocument1),
+                bootstrapTest.client.index(defaultDocument2)
+            ]);
+        });
+
+        it(`tests higher amount of data`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await MyClass.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            const size = 35000;
+            const bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyClass.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            let total = 0;
+            let items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            });
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(size);
+
+            total = 0;
+            const bulkSize = 100;
+            items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, bulkSize);
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(size);
+        });
+
+        it(`iterates without any query specified`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const items = MyClass.itemIterator();
+            const possibleValues = [userObject1.document.name, userObject2.document.name];
+            for await (const item of items) {
+                expect(possibleValues).to.include(item.name);
+                expect(item).to.be.an.instanceOf(MyClass);
+
+                expect(item._id).to.be.a(`string`);
+                expect(item._primary_term).to.be.a(`number`);
+                expect(item._seq_no).to.be.a(`number`);
+                expect(item._version).to.be.a(`number`);
+                expect(item._score).to.be.a(`number`);
+            }
+        });
+
+        it(`iterates with match_all`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            const possibleValues = [userObject1.document.name, userObject2.document.name];
+            for await (const item of items) {
+                expect(possibleValues).to.include(item.name);
+                expect(item).to.be.an.instanceOf(MyClass);
+
+                expect(item._id).to.be.a(`string`);
+                expect(item._primary_term).to.be.a(`number`);
+                expect(item._seq_no).to.be.a(`number`);
+                expect(item._version).to.be.a(`number`);
+                expect(item._score).to.be.a(`number`);
+            }
+        });
+
+        it(`iterates using non existing property`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match: {
+                        unknown: `whatever`
+                    }
+                }
+            });
+
+            let total = 0;
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(0);
+        });
+
+        it(`won't find anything when iterating using incorrect tenant`, async () => {
+            const MyClass = createClass(`documents`).in(`*incorrect`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            });
+
+            let total = 0;
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(0);
+        });
+
+        it(`iterates without source fields`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            }, false);
+
+            for await (const item of items) {
+                expect(item._id).not.to.be.undefined;
+                expect(item._version).not.to.be.undefined;
+                expect(item._primary_term).not.to.be.undefined;
+                expect(item._seq_no).not.to.be.undefined;
+                expect(item._score).not.to.be.undefined;
+                expect(item._source).to.be.undefined;
+            }
+        });
+
+        it(`iterates for specific field only`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            }, [`name`]);
+
+            for await (const item of items) {
+                expect(item._id).not.to.be.undefined;
+                expect(item._version).not.to.be.undefined;
+                expect(item._primary_term).not.to.be.undefined;
+                expect(item._seq_no).not.to.be.undefined;
+                expect(item._score).not.to.be.undefined;
+                expect(item._source).not.to.be.undefined;
+                expect(item._source.name).not.to.be.undefined;
+                expect(item._source.status).to.be.undefined;
+            }
+        });
+
+        it(`iterates for documents with size parameter`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, 1);
+
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            let total = 0;
+            for await (const item of items) {
+                total++;
+                expect(possibleValues).to.include(item.html);
+            }
+            expect(total).to.equal(2);
+        });
+
+        it(`iterates for documents with size parameter in body`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                },
+                size: 1
+            });
+
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            let total = 0;
+            for await (const item of items) {
+                total++;
+                expect(possibleValues).to.include(item.html);
+            }
+            expect(total).to.equal(2);
         });
     });
 
@@ -2637,7 +3148,7 @@ describe(`BaseModel class`, function() {
 
             const instance = new MyTest({ status: `:)` }, `test`);
             await instance.save();
-            MyTest.putSettings({
+            await MyTest.putSettings({
                 index: {
                     blocks: {
                         write: true
@@ -2682,7 +3193,7 @@ describe(`BaseModel class`, function() {
             const MyTest = createClass(`test`).in(`test`);
             const instance = new MyTest({ status: `:)` }, `test`);
             await instance.save();
-            MyTest.putSettings({
+            await MyTest.putSettings({
                 index: {
                     blocks: {
                         write: true
@@ -2730,7 +3241,7 @@ describe(`BaseModel class`, function() {
             const MyTest = createClass(`test`).in(`test`);
             const instance = new MyTest({ status: `:)` }, `test`);
             await instance.save();
-            MyTest.putSettings({
+            await MyTest.putSettings({
                 index: {
                     blocks: {
                         write: true

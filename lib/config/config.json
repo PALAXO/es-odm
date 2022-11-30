@@ -14,7 +14,8 @@
     "url": "http://localhost:9200",
     "requestTimeout": 120000,
     "maxResults": 10000,
-    "scrollTimeout": "5s",
+    "scrollSize": 1000,
+    "scrollTimeoutSeconds": 5,
     "retryOnConflict": 10,
     "retries":  {
       "base": 2.0,

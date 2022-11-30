@@ -197,10 +197,25 @@
      - Returns all results if `from` / `size` are not specified, no matter how many there are
        - Uses scroll API
    - `source` can be used to return plain object with only required source fields
+   - `explicitScroll` can be used to either initialize scrolling or continue in it
+     - Specify a scroll ID to continue in scrolling; or specify a number to initialize new scrolling
+     - In case of a positive number, this is used as a scroll timout (otherwise `scrollRefresh` from `additional is used or default value)
+   - `additional` is an optional object with additional data
+     - `cache` is a cache object
+     - `scrollRefresh` is optional scroll refresh time
    
  - `static async clearScroll(scrollId)`
    - Deletes existing scroll
    - Returns ES response
+
+ - `static async *bulkIterator(body, ?source, ?bulkSize, ?additional)`
+   - Async generator for iterating over bulks of documents
+   - `body`, `source` and `additional` arguments are the same as in the `search` function
+   - `bulkSize` is optional custom size of a bulk
+
+ - `static async *itemIterator(body, ?source, ?bulkSize, ?additional)`
+   - Async generator for iterating over documents
+   - Arguments are the same as in the `bulkIterator` generator
 
  - `static async findAll()`
    - Finds all entries in ES, matching class `alias`
@@ -360,8 +375,12 @@
 - `async _packData(cache)`
     - Alters the instance data before it is saved to ES
     - By default, just passes the instance data without any change, but can be rewritten
-  
- - `static async _afterSearch(instances, ?cache)`
-   - Special function called for each record founded by search / find / findAll / get
-   - By default, it is empty, but you can overwrite it in your code
+
+- `static async _afterSearch(instances, ?cache)`
+    - Special function called for each record founded by search / find / findAll / get
+    - By default, it is empty, but you can overwrite it in your code
+
+- `static async _getBulkSize()`
+    - Returns optimal size of bulk for given model
+    - Used in `search` function for scrolling
  
