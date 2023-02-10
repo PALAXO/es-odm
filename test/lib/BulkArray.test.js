@@ -254,7 +254,7 @@ describe(`BulkArray class`, function() {
             const myInstance1 = new MyClass(data1, `first`, 666);
 
             const bulk = new BulkArray(myInstance1);
-            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`"found":false`);
+            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`Tried to fetch version information but some instances are not in ES.`);
         });
 
         it(`saves array with specified version`, async () => {
