@@ -3,11 +3,12 @@
 const Joi = require(`@hapi/joi`);
 const _ = require(`lodash`);
 
-const { cloneClass, BaseModel } = require(`./lib/BaseModel`);
-const { JointModel } = require(`./lib/JointModel`);
+const BaseModel = require(`./lib/BaseModel`);
+const JointModel = require(`./lib/JointModel`);
 const BulkArray = require(`./lib/BulkArray`);
 const { esClient, setClient, esErrors } = require(`./lib/ElasticSearch`);
 const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
+const utils = require(`./lib/utils`);
 
 /**
  * This is needed due to possible bug is JSDoc parser...
@@ -29,16 +30,17 @@ function createClass(name, schema = Joi.object(), tenant = `*`) {
         throw Error(`Tenant cannot contain underscore.`);
     }
 
-    const properties = {
+    return utils.cloneClass(BaseModel, {
         schema: schema,
         _tenant: tenant,
         _name: name,
         _immediateRefresh: true
-    };
-
-    // Creates new class extended from {BaseModel}
-    return cloneClass(properties);
+    });
 }
 
-module.exports = { createClass, BulkArray, BaseModel, JointModel, esClient, setClient, esErrors,
-    setLoggerConfig, setLoggerUidFunction };
+module.exports = {
+    createClass,
+    BaseModel, BulkArray, JointModel,
+    esClient, setClient, esErrors,
+    setLoggerConfig, setLoggerUidFunction
+};

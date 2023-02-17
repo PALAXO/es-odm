@@ -2907,7 +2907,7 @@ describe(`BaseModel class`, function() {
         it(`gets mapping of multiple indexes`, async () => {
             const MyDocuments = createClass(`documents`);
 
-            const mapping = await MyDocuments.getSettings();
+            const mapping = await MyDocuments.getMapping();
             expect(Object.keys(mapping).length > 1);
         });
     });
