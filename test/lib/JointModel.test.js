@@ -2,7 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, JointModel } = require(`../../app`);
+const { createClass, JointModel, BulkArray } = require(`../../app`);
 
 //It uses ES7 Circularo indices
 describe(`JointModel class`, function() {
@@ -506,7 +506,7 @@ describe(`JointModel class`, function() {
 
             const results = await jointModel.search(void 0, void 0, void 0, true);
             expect(results.length).to.equal(3);
-            expect(results._total).to.be.undefined;
+            expect(results._total).to.equal(3);
             for (const result of results) {
                 expect(result.constructor.alias).to.be.undefined;
             }
@@ -554,6 +554,88 @@ describe(`JointModel class`, function() {
 
             const documentAggregations = results.aggregations.index.buckets.find((agg) => agg.key === documentIndex);
             expect(documentAggregations.doc_count).to.equal(1);
+        });
+    });
+
+    describe(`openPIT()`, () => {
+        it(`can't open PIT with not existing index`, async () => {
+            const jointModel = new JointModel();
+
+            jointModel.recordSearch(createClass(`test`).in(`test`));
+            await expect(jointModel.openPIT()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+        });
+
+        it(`searches using PIT over multiple indices`, async () => {
+            const jointModel = new JointModel();
+
+            const MyUsers = jointModel.recordSearch(createClass(`users`).in(`test`));
+            const MyDocuments = jointModel.recordSearch(createClass(`documents`).in(`test`));
+            const documentSize = 10;
+
+            const ids = [];
+            const myBulk = new BulkArray();
+            for (let i = 0; i < documentSize; i++) {
+                const id = `${i}`;
+                ids.push(id);
+                myBulk.push(new MyUsers({ name: id }));
+                myBulk.push(new MyDocuments({ documentTitle: id }));
+            }
+            await myBulk.save();
+
+            let myPIT = await jointModel.openPIT();
+
+            const anotherBulk = new BulkArray();
+            for (let i = 0; i < documentSize; i++) {
+                anotherBulk.push(new MyUsers({ name: `another_${i}` }));
+                anotherBulk.push(new MyDocuments({ documentTitle: `another_${i}` }));
+            }
+            await anotherBulk.save();
+
+            await MyUsers.search({});
+            await MyDocuments.search({});
+
+            const allResults = [];
+            let foundResults, searchAfter;
+            do {
+                foundResults = await jointModel.search({ size: 2, pit: { id: myPIT, keep_alive: `60s` }, sort: [{ _shard_doc: `asc` }], search_after: searchAfter, track_total_hits: false });
+                allResults.push(...foundResults);
+
+                myPIT = foundResults?.pitID;
+                searchAfter = foundResults[foundResults.length - 1]?._sort;
+
+            } while (foundResults.length > 0);
+
+            await jointModel.closePIT(myPIT);
+
+            expect(allResults.length).to.equal(2 * documentSize);
+            for (const id of ids) {
+                let index = allResults.findIndex((singleResult) => singleResult.name === id);
+                expect(index).to.be.greaterThanOrEqual(0);
+                allResults.splice(index, 1);
+
+                index = allResults.findIndex((singleResult) => singleResult.documentTitle === id);
+                expect(index).to.be.greaterThanOrEqual(0);
+                allResults.splice(index, 1);
+            }
+        });
+    });
+
+    describe(`closePIT()`, () => {
+        it(`can't close not existing PIT`, async () => {
+            const jointModel = new JointModel();
+            const result = await jointModel.closePIT(`wtf`);
+            expect(result).to.equal(false);
+        });
+
+        it(`closes PIT`, async () => {
+            const jointModel = new JointModel();
+
+            jointModel.recordSearch(createClass(`users`).in(`test`));
+            jointModel.recordSearch(createClass(`documents`).in(`test`));
+            const myPIT = await jointModel.openPIT();
+
+            const result = await jointModel.closePIT(myPIT);
+            expect(result).to.equal(true);
         });
     });
 });

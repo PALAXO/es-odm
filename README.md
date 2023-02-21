@@ -107,20 +107,21 @@
 #### Instances
  - Instances are made from prepared class
    - Manually: 
-     - You prepare class and then you can call `new MyClass(?data, ?_id, ?_version, ?_highlight, ?_primary_term, ?_seq_no, ?_score)`
+     - You prepare class and then you can call `new MyClass(?data, ?_id, ?_version, ?_highlight, ?_primary_term, ?_seq_no, ?_score, ?_sort)`
        - `data` is optional object whose properties are placed to instance
        - `_id` is optional ES _id
        - `_version` is optional ES _version
-       - `_highlight` is optional ES _highlight
+       - `_highlight` is optional ES highlight
        - `_primary_term` is optional ES _primary_term
        - `_seq_no` is optional ES _seq_no
        - `_score` is optional ES _score
+       - `_sort` is optional ES sort
    - From static functions: 
      - When you call functions like `findAll()`, `search()`, ...
        - Instance is made from class and correct data is loaded from ES
  - Instance contains only ES data and methods to save / reload / validate / ...
    - All ES properties, search functions, ... are saved in class
- - NOTE: `_id`, `_version`, `_highlight`, `_primary_term`, `_seq_no` and `_score` are not enumerable
+ - NOTE: `_id`, `_version`, `_highlight`, `_primary_term`, `_seq_no`, `_score` and `_sort` are not enumerable
 
 #### BulkArray
  - For ES Bulk API, you can use `BulkArray`
@@ -278,6 +279,10 @@
  - `static async deleteAlias()`
    - Deletes ODM alias from ES, underlying index remains unchanged
 
+ - `static async aliasExists()`
+   - Checks ODM alias existence
+   - Returns boolean
+
  - `static async indexExists()`
    - Checks ODM index existence
    - Returns boolean
@@ -310,6 +315,12 @@
    
  - `static async refresh()`
    - Refreshed current index / indices
+
+ - `static async openPIT()`
+   - Opens Point in Time in given index
+
+ - `static async closePIT(id)`
+   - Closes given Point in Time
    
 ##### Instance level API
  - `async save(?useVersion)`

@@ -2775,6 +2775,40 @@ describe(`BaseModel class`, function() {
         });
     });
 
+    describe(`static aliasExists()`, () => {
+        const uuid = `abc123`;
+
+        beforeEach(async () => {
+            await bootstrapTest.deleteIndex(`test_revisions`, uuid);
+            await bootstrapTest.createIndex(`test_revisions`, uuid);
+        });
+
+        it(`can't check alias with wildcard`, async () => {
+            const MyRevisions = createClass(`revisions`); //tenant is *
+
+            await expect(MyRevisions.aliasExists()).to.be.eventually.rejectedWith(`You cannot use 'aliasExists' with current tenant '*', full alias is '*_revisions'!`);
+        });
+
+        it(`checks if alias exists`, async () => {
+            const MyRevisions = createClass(`revisions`).in(`test`);
+
+            const exists = await MyRevisions.aliasExists();
+            expect(exists).to.be.true;
+        });
+
+        it(`checks if not existing alias exists`, async () => {
+            const MyRevisions = createClass(`revisions`).in(`test`);
+            await MyRevisions.deleteAlias();
+
+            const exists = await MyRevisions.aliasExists();
+            expect(exists).to.be.false;
+        });
+
+        afterEach(async () => {
+            await bootstrapTest.deleteIndex(`test_revisions`, uuid);
+        });
+    });
+
     describe(`static indexExists()`, () => {
         const uuid = `abc123`;
 
@@ -3355,6 +3389,121 @@ describe(`BaseModel class`, function() {
             foundSecondUsers = await SecondType.findAll();
             expect(foundSecondUsers.length).to.equal(1);
             expect(foundSecondUsers[0].documentTitle).to.equal(`second`);
+        });
+    });
+
+    describe(`static openPIT()`, () => {
+        it(`can't open PIT with not existing index`, async () => {
+            const Test = createClass(`test`).in(`test`);
+            await expect(Test.openPIT()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+        });
+
+        it(`searches using PIT over single index`, async () => {
+            const MyUsers = createClass(`users`).in(`test`);
+            const documentSize = 10;
+
+            const ids = [];
+            const myBulk = new BulkArray();
+            for (let i = 0; i < documentSize; i++) {
+                const id = `${i}`;
+                ids.push(id);
+                myBulk.push(new MyUsers({ name: id }));
+            }
+            await myBulk.save();
+
+            let myPIT = await MyUsers.openPIT();
+
+            const anotherBulk = new BulkArray();
+            for (let i = 0; i < documentSize; i++) {
+                anotherBulk.push(new MyUsers({ name: `another_${i}` }));
+            }
+            await anotherBulk.save();
+
+            const allUsers = [];
+            let foundUsers, searchAfter;
+            do {
+                foundUsers = await MyUsers.search({ size: 2, pit: { id: myPIT, keep_alive: `60s` }, sort: [{ _shard_doc: `asc` }], search_after: searchAfter, track_total_hits: false });
+                allUsers.push(...foundUsers);
+
+                myPIT = foundUsers?.pitID;
+                searchAfter = foundUsers[foundUsers.length - 1]?._sort;
+
+            } while (foundUsers.length > 0);
+
+            await MyUsers.closePIT(myPIT);
+
+            expect(allUsers.length).to.equal(documentSize);
+            for (const id of ids) {
+                const index = allUsers.findIndex((singleUser) => singleUser.name === id);
+                expect(index).to.be.greaterThanOrEqual(0);
+                allUsers.splice(index, 1);
+            }
+        });
+
+        it(`searches using PIT over multiple indices`, async () => {
+            const MyUsers = createClass(`users`).in(`*`);
+            const MyUsers1 = createClass(`users`).in(`test1`);
+            const MyUsers2 = createClass(`users`).in(`test2`);
+            const documentSize = 10;
+
+            const ids = [];
+            const myBulk = new BulkArray();
+            for (let i = 0; i < documentSize; i++) {
+                const id = `${i}`;
+                ids.push(id);
+                myBulk.push(new MyUsers1({ name: id }));
+                myBulk.push(new MyUsers2({ name: id }));
+            }
+            await myBulk.save();
+
+            let myPIT = await MyUsers.openPIT();
+
+            const anotherBulk = new BulkArray();
+            for (let i = 0; i < documentSize; i++) {
+                anotherBulk.push(new MyUsers1({ name: `another_${i}` }));
+                anotherBulk.push(new MyUsers2({ name: `another_${i}` }));
+            }
+            await anotherBulk.save();
+
+            const allUsers = [];
+            let foundUsers, searchAfter;
+            do {
+                foundUsers = await MyUsers.search({ size: 2, pit: { id: myPIT, keep_alive: `60s` }, sort: [{ _shard_doc: `asc` }], search_after: searchAfter, track_total_hits: false });
+                allUsers.push(...foundUsers);
+
+                myPIT = foundUsers?.pitID;
+                searchAfter = foundUsers[foundUsers.length - 1]?._sort;
+
+            } while (foundUsers.length > 0);
+
+            await MyUsers.closePIT(myPIT);
+
+            expect(allUsers.length).to.equal(2 * documentSize);
+            for (const id of ids) {
+                let index = allUsers.findIndex((singleUser) => singleUser.name === id);
+                expect(index).to.be.greaterThanOrEqual(0);
+                allUsers.splice(index, 1);
+
+                index = allUsers.findIndex((singleUser) => singleUser.name === id);
+                expect(index).to.be.greaterThanOrEqual(0);
+                allUsers.splice(index, 1);
+            }
+        });
+    });
+
+    describe(`static closePIT()`, () => {
+        it(`can't close not existing PIT`, async () => {
+            const Test = createClass(`test`).in(`test`);
+            const result = await Test.closePIT(`wtf`);
+            expect(result).to.equal(false);
+        });
+
+        it(`closes PIT`, async () => {
+            const MyUsers = createClass(`users`).in(`test`);
+            const myPIT = await MyUsers.openPIT();
+
+            const result = await MyUsers.closePIT(myPIT);
+            expect(result).to.equal(true);
         });
     });
 

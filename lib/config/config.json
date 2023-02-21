@@ -16,6 +16,7 @@
     "maxResults": 10000,
     "scrollSize": 1000,
     "scrollTimeoutSeconds": 5,
+    "pitTimeoutSeconds": 60,
     "retryOnConflict": 10,
     "retries":  {
       "base": 2.0,
