@@ -4,7 +4,6 @@ const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
 const { createClass, JointModel, BulkArray } = require(`../../app`);
 
-//It uses ES7 Circularo indices
 describe(`JointModel class`, function() {
     this.timeout(testTimeout);
 
@@ -248,7 +247,7 @@ describe(`JointModel class`, function() {
                 }
             });
 
-            await expect(jointModel.search(`invalid`)).to.be.eventually.rejectedWith(`Incorrect body has been specified!`);
+            await expect(jointModel.search(`invalid`)).to.be.eventually.rejectedWith(`Body must be an object!`);
         });
 
         it(`searches with single recorded query`, async () => {
@@ -273,6 +272,41 @@ describe(`JointModel class`, function() {
             expect(results[0]._score).to.be.a(`number`);
             expect(results[0].status).to.equal(userObject1.document.status);
             expect(results[0].name).to.equal(userObject1.document.name);
+        });
+
+        it(`searches with custom cache`, async () => {
+            let MyClass = createClass(`users`).in(`test`);
+            let instances, cache;
+            MyClass._afterSearch = async function (newInstances, newCache) {
+                instances = newInstances;
+                cache = newCache;
+            };
+
+            const jointModel = new JointModel();
+            MyClass = jointModel.recordSearch(MyClass);
+
+            await MyClass.search({
+                query: {
+                    match: {
+                        status: `:)`
+                    }
+                }
+            });
+
+            const results = await jointModel.search(void 0, void 0, void 0, { cache: { custom: true } });
+            expect(results.length).to.equal(1);
+            expect(results._total).to.equal(1);
+            expect(results[0]._id).to.equal(userObject1.id);
+            expect(results[0]._primary_term).to.be.a(`number`);
+            expect(results[0]._seq_no).to.be.a(`number`);
+            expect(results[0]._version).to.be.a(`number`);
+            expect(results[0]._score).to.be.a(`number`);
+            expect(results[0].status).to.equal(userObject1.document.status);
+            expect(results[0].name).to.equal(userObject1.document.name);
+
+            expect(instances.length).to.equal(1);
+            expect(instances[0]).to.equal(results[0]);
+            expect(cache?.custom).to.equal(true);
         });
 
         it(`will ignore query in JointModel search`, async () => {
@@ -504,7 +538,7 @@ describe(`JointModel class`, function() {
                 })
             ]);
 
-            const results = await jointModel.search(void 0, void 0, void 0, true);
+            const results = await jointModel.search(void 0, void 0, void 0, { source: true });
             expect(results.length).to.equal(3);
             expect(results._total).to.equal(3);
             for (const result of results) {
@@ -557,6 +591,934 @@ describe(`JointModel class`, function() {
         });
     });
 
+    describe(`static *bulkIterator()`, () => {
+        let userObject1;
+        let userObject2;
+        let defaultDocument1;
+        let defaultDocument2;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                document: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                document: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            defaultDocument1 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document1`,
+                refresh: true
+            };
+            defaultDocument2 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document2`,
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(defaultDocument1),
+                bootstrapTest.client.index(defaultDocument2)
+            ]);
+        });
+
+        it(`tests higher amount of data`, async () => {
+            const size = 35000;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            let bulks = myJoint.bulkIterator();
+            for await (const bulk of bulks) {
+                total += bulk.length;
+            }
+            expect(total).to.equal(2 * size);
+
+            total = 0;
+            const bulkSize = 100;
+            bulks = myJoint.bulkIterator({ size: bulkSize });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+                expect(bulk.length).to.equal(bulkSize);
+            }
+            expect(total).to.equal(2 * size);
+        });
+
+        it(`iterates using non existing property`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const myJoint = new JointModel();
+            const RecordingClass = myJoint.recordSearch(MyClass);
+            await RecordingClass.search({
+                query: {
+                    match: {
+                        unknown: `whatever`
+                    }
+                }
+            });
+
+            const bulks = myJoint.bulkIterator();
+            for await (const bulk of bulks) {
+                expect(bulk.length).to.equal(0);
+                expect(bulk._total).to.equal(0);
+            }
+        });
+
+        it(`iterates using custom cache`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            let instances1, cache1;
+            MyUsers._afterSearch = async function (newInstances, newCache) {
+                instances1 = newInstances;
+                cache1 = newCache;
+            };
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            let instances2, cache2;
+            MyDocuments._afterSearch = async function (newInstances, newCache) {
+                instances2 = newInstances;
+                cache2 = newCache;
+            };
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const bulks = myJoint.bulkIterator(void 0, { cache: { custom: true } });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+            }
+            expect(total).to.equal(2 * size);
+
+            expect(instances1.length).to.equal(size);
+            expect(cache1?.custom).to.equal(true);
+
+            expect(instances2.length).to.equal(size);
+            expect(cache2?.custom).to.equal(true);
+        });
+
+        it(`iterates without source fields`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const bulks = myJoint.bulkIterator(void 0, { source: false });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+
+                for (const item of bulk) {
+                    expect(item._id).not.to.be.undefined;
+                    expect(item._index).not.to.be.undefined;
+                    expect(item._version).not.to.be.undefined;
+                    expect(item._primary_term).not.to.be.undefined;
+                    expect(item._seq_no).not.to.be.undefined;
+                    expect(item._score).not.to.be.undefined;
+                    expect(item._source).to.be.undefined;
+                }
+            }
+            expect(total).to.equal(2 * size);
+        });
+
+        it(`iterates for specific field only`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const bulks = myJoint.bulkIterator(void 0, { source: [`name`] });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+
+                for (const item of bulk) {
+                    expect(item._id).not.to.be.undefined;
+                    expect(item._index).not.to.be.undefined;
+                    expect(item._version).not.to.be.undefined;
+                    expect(item._primary_term).not.to.be.undefined;
+                    expect(item._seq_no).not.to.be.undefined;
+                    expect(item._score).not.to.be.undefined;
+
+                    if (item._index.startsWith(RecordingUsers.alias)) {
+                        expect(item._source.name).not.to.be.undefined;
+                        expect(item._source.status).to.be.undefined;
+                    } else {
+                        expect(item._source).to.be.empty;
+                    }
+                }
+            }
+            expect(total).to.equal(2 * size);
+        });
+
+        it(`iterates for documents with size parameter`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const bulkSize = 10;
+            const bulks = myJoint.bulkIterator({ size: bulkSize });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+                expect(bulk.length).to.equal(bulkSize);
+
+                for (const item of bulk) {
+                    if (item.constructor.alias.startsWith(RecordingUsers.alias)) {
+                        expect(item.name.substring(0, 4)).to.equal(`name`);
+                    } else {
+                        expect(item.documentTitle.substring(0, 5)).to.equal(`title`);
+                    }
+                }
+            }
+            expect(total).to.equal(2 * size);
+        });
+    });
+
+    describe(`static *itemIterator()`, () => {
+        let userObject1;
+        let userObject2;
+        let defaultDocument1;
+        let defaultDocument2;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                document: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                document: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            defaultDocument1 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document1`,
+                refresh: true
+            };
+            defaultDocument2 = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document2`,
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+
+                bootstrapTest.client.index(defaultDocument1),
+                bootstrapTest.client.index(defaultDocument2)
+            ]);
+        });
+
+        it(`tests higher amount of data`, async () => {
+            const size = 35000;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            let items = myJoint.itemIterator();
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(2 * size);
+
+            total = 0;
+            const bulkSize = 100;
+            items = myJoint.itemIterator({ size: bulkSize });
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(2 * size);
+        });
+
+        it(`iterates using non existing property`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const myJoint = new JointModel();
+            const RecordingClass = myJoint.recordSearch(MyClass);
+            await RecordingClass.search({
+                query: {
+                    match: {
+                        unknown: `whatever`
+                    }
+                }
+            });
+
+            let total = 0;
+            const items = myJoint.itemIterator();
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(0);
+        });
+
+        it(`iterates using custom cache`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            let instances1, cache1;
+            MyUsers._afterSearch = async function (newInstances, newCache) {
+                instances1 = newInstances;
+                cache1 = newCache;
+            };
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            let instances2, cache2;
+            MyDocuments._afterSearch = async function (newInstances, newCache) {
+                instances2 = newInstances;
+                cache2 = newCache;
+            };
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const items = myJoint.itemIterator(void 0, { cache: { custom: true } });
+            // eslint-disable-next-line no-unused-vars
+            for await (const item of items) {
+                total++;
+            }
+            expect(total).to.equal(2 * size);
+
+            expect(instances1.length).to.equal(size);
+            expect(cache1?.custom).to.equal(true);
+
+            expect(instances2.length).to.equal(size);
+            expect(cache2?.custom).to.equal(true);
+        });
+
+        it(`iterates without source fields`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const items = myJoint.itemIterator(void 0, { source: false });
+            for await (const item of items) {
+                total++;
+
+                expect(item._id).not.to.be.undefined;
+                expect(item._index).not.to.be.undefined;
+                expect(item._version).not.to.be.undefined;
+                expect(item._primary_term).not.to.be.undefined;
+                expect(item._seq_no).not.to.be.undefined;
+                expect(item._score).not.to.be.undefined;
+                expect(item._source).to.be.undefined;
+            }
+            expect(total).to.equal(2 * size);
+        });
+
+        it(`iterates for specific field only`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const items = myJoint.itemIterator(void 0, { source: [`name`] });
+            for await (const item of items) {
+                total++;
+
+                expect(item._id).not.to.be.undefined;
+                expect(item._index).not.to.be.undefined;
+                expect(item._version).not.to.be.undefined;
+                expect(item._primary_term).not.to.be.undefined;
+                expect(item._seq_no).not.to.be.undefined;
+                expect(item._score).not.to.be.undefined;
+
+                if (item._index.startsWith(RecordingUsers.alias)) {
+                    expect(item._source.name).not.to.be.undefined;
+                    expect(item._source.status).to.be.undefined;
+                } else {
+                    expect(item._source).to.be.empty;
+                }
+            }
+            expect(total).to.equal(2 * size);
+        });
+
+        it(`iterates for documents with size parameter`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            let total = 0;
+            const bulkSize = 10;
+            const items = myJoint.itemIterator({ size: bulkSize });
+            for await (const item of items) {
+                total++;
+
+                if (item.constructor.alias.startsWith(RecordingUsers.alias)) {
+                    expect(item.name.substring(0, 4)).to.equal(`name`);
+                } else {
+                    expect(item.documentTitle.substring(0, 5)).to.equal(`title`);
+                }
+            }
+            expect(total).to.equal(2 * size);
+        });
+    });
+
+    describe(`static clearScroll()`, () => {
+        it(`can't clear scroll without specifying scroll id`, async () => {
+            const myJoint = new JointModel();
+
+            await expect(myJoint.clearScroll()).to.be.eventually.rejectedWith(`scrollId must be specified!`);
+        });
+
+        it(`clears scroll`, async () => {
+            createClass(`users`);
+            const myJoint = new JointModel();
+            const RecordingClass = myJoint.recordSearch(createClass(`users`).in(`test`));
+
+            await RecordingClass.search();
+            const results = await myJoint.search(void 0, void 0, void 0, { scrollId: true });
+
+            const scrollId = results.scrollId;
+            let result = await myJoint.clearScroll(scrollId);
+            expect(result).to.be.true;
+
+            //can't clear one more time
+            result = await myJoint.clearScroll(scrollId);
+            expect(result).to.be.false;
+        });
+    });
+
     describe(`openPIT()`, () => {
         it(`can't open PIT with not existing index`, async () => {
             const jointModel = new JointModel();
@@ -582,7 +1544,7 @@ describe(`JointModel class`, function() {
             }
             await myBulk.save();
 
-            let myPIT = await jointModel.openPIT();
+            const myPit = await jointModel.openPIT();
 
             const anotherBulk = new BulkArray();
             for (let i = 0; i < documentSize; i++) {
@@ -595,17 +1557,14 @@ describe(`JointModel class`, function() {
             await MyDocuments.search({});
 
             const allResults = [];
-            let foundResults, searchAfter;
+            let foundResults;
             do {
-                foundResults = await jointModel.search({ size: 2, pit: { id: myPIT, keep_alive: `60s` }, sort: [{ _shard_doc: `asc` }], search_after: searchAfter, track_total_hits: false });
+                foundResults = await jointModel.search({}, 0, 2, { pitId: foundResults?.pitId ?? myPit, searchAfter: foundResults?._lastPosition });
                 allResults.push(...foundResults);
-
-                myPIT = foundResults?.pitID;
-                searchAfter = foundResults[foundResults.length - 1]?._sort;
 
             } while (foundResults.length > 0);
 
-            await jointModel.closePIT(myPIT);
+            await jointModel.closePIT(myPit);
 
             expect(allResults.length).to.equal(2 * documentSize);
             for (const id of ids) {
@@ -621,6 +1580,12 @@ describe(`JointModel class`, function() {
     });
 
     describe(`closePIT()`, () => {
+        it(`can't close PIT without specifying pitID`, async () => {
+            const jointModel = new JointModel();
+
+            await expect(jointModel.closePIT()).to.be.eventually.rejectedWith(`PIT ID must be specified!`);
+        });
+
         it(`can't close not existing PIT`, async () => {
             const jointModel = new JointModel();
             const result = await jointModel.closePIT(`wtf`);
@@ -632,10 +1597,47 @@ describe(`JointModel class`, function() {
 
             jointModel.recordSearch(createClass(`users`).in(`test`));
             jointModel.recordSearch(createClass(`documents`).in(`test`));
-            const myPIT = await jointModel.openPIT();
+            const myPit = await jointModel.openPIT();
 
-            const result = await jointModel.closePIT(myPIT);
+            const result = await jointModel.closePIT(myPit);
             expect(result).to.equal(true);
+        });
+    });
+
+    describe(`async _getBulkSize()`, () => {
+        it(`throws when there are no models`, async () => {
+            const myJoint = new JointModel();
+            await expect(myJoint._getBulkSize()).to.be.eventually.rejectedWith(`There are no models in JointModel instance.`);
+        });
+
+        it(`returns bulk value from single model`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            MyClass._getBulkSize = async function() { return 10; };
+
+            const myJoint = new JointModel();
+            myJoint.recordSearch(MyClass);
+            const bulkSize = await myJoint._getBulkSize();
+            expect(bulkSize).to.be.a(`number`);
+            expect(bulkSize).to.equal(10);
+        });
+
+        it(`returns bulk value from multiple models`, async () => {
+            const MyClass1 = createClass(`users1`).in(`test`);
+            MyClass1._getBulkSize = async function() { return 100; };
+
+            const MyClass2 = createClass(`users2`).in(`test`);
+            MyClass2._getBulkSize = async function() { return 50; };
+
+            const MyClass3 = createClass(`users3`).in(`test`);
+            MyClass3._getBulkSize = async function() { return 85; };
+
+            const myJoint = new JointModel();
+            myJoint.recordSearch(MyClass1);
+            myJoint.recordSearch(MyClass2);
+            myJoint.recordSearch(MyClass3);
+            const bulkSize = await myJoint._getBulkSize();
+            expect(bulkSize).to.be.a(`number`);
+            expect(bulkSize).to.equal(50);
         });
     });
 });

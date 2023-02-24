@@ -4,7 +4,6 @@ const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
 const { createClass, BulkArray } = require(`../../app`);
 
-//It uses ES7 Circularo indices
 describe(`BulkArray class`, function() {
     this.timeout(testTimeout);
 
@@ -42,8 +41,17 @@ describe(`BulkArray class`, function() {
             };
             const myInstance = new MyClass(data, `myId`);
 
-            const bulk = new BulkArray(myInstance);
+            let bulk = new BulkArray(myInstance);
             await expect(bulk.save()).to.be.eventually.rejectedWith(`"value" must be a string`);
+
+            bulk = new BulkArray({ });
+            await expect(bulk.save()).to.be.eventually.rejectedWith(`Item at position 0 doesn't have internal property "__uuid".`);
+
+            bulk = new BulkArray({ __uuid: `abc` });
+            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`Item at position 0 doesn't have specified id and you are using 'useVersion' parameter!`);
+
+            bulk = new BulkArray({ __uuid: `abc`, _id: `test` });
+            await expect(bulk.save(true)).to.be.eventually.rejectedWith(`Item at position 0 doesn't have specified version and you are using 'useVersion' parameter!`);
         });
 
         it(`can't save valid and invalid data`, async () => {
@@ -391,6 +399,26 @@ describe(`BulkArray class`, function() {
             ]);
         });
 
+        it(`can't delete invalid data`, async () => {
+            let bulk = new BulkArray({ });
+            await expect(bulk.delete()).to.be.eventually.rejectedWith(`Item at position 0 doesn't have internal property "__uuid".`);
+
+            bulk = new BulkArray({ __uuid: `abc` });
+            await expect(bulk.delete()).to.be.eventually.rejectedWith(`Item at position 0 doesn't specify any alias!`);
+
+            bulk = new BulkArray({ __uuid: `abc`, constructor: { alias: `test*test_test` } });
+            await expect(bulk.delete()).to.be.eventually.rejectedWith(`Item at position 0 has wildcard in alias 'test*test_test'!`);
+
+            bulk = new BulkArray({ __uuid: `abc`, constructor: { alias: `test?test_test` } });
+            await expect(bulk.delete()).to.be.eventually.rejectedWith(`Item at position 0 has wildcard in alias 'test?test_test'!`);
+
+            bulk = new BulkArray({ __uuid: `abc`, constructor: { alias: `test_test` } });
+            await expect(bulk.delete()).to.be.eventually.rejectedWith(`Item at position 0 doesn't have specified id!`);
+
+            bulk = new BulkArray({ __uuid: `abc`, constructor: { alias: `test_test` }, _id: `test` });
+            await expect(bulk.delete(true)).to.be.eventually.rejectedWith(`Item at position 0 doesn't have specified version and you are using 'useVersion' parameter!`);
+        });
+
         it(`deletes data instances`, async () => {
             const UserClass = createClass(`users`).in(`test`);
             const DocumentClass = createClass(`documents`).in(`test`);
@@ -417,27 +445,6 @@ describe(`BulkArray class`, function() {
                 id: myInstance2._id
             });
             expect(results2).to.be.false;
-        });
-
-        it(`deletes only correct and saved data instances`, async () => {
-            const UserClass = createClass(`users`).in(`test`);
-
-            const myInstance1 = await UserClass.get(`ok`);
-            const myInstance2 = new UserClass({}, `invalid`);
-
-            const bulk = new BulkArray(myInstance1, myInstance2, `incorrect`);
-            const results = await bulk.delete();
-
-            expect(results.errors).to.be.false;
-            expect(results.items.length).to.equal(2);
-            expect(results.items[0].delete.result).to.equal(`deleted`);
-            expect(results.items[1].delete.result).to.equal(`not_found`);
-
-            const results1 = await bootstrapTest.client.exists({
-                index: myInstance1.constructor.alias,
-                id: myInstance1._id
-            });
-            expect(results1).to.be.false;
         });
 
         it(`deletes array with specified version`, async () => {
@@ -533,6 +540,11 @@ describe(`BulkArray class`, function() {
     });
 
     describe(`reload()`, () => {
+        it(`can't reload invalid data`, async () => {
+            const bulk = new BulkArray({ });
+            await expect(bulk.reload()).to.be.eventually.rejectedWith(`Item at position 0 doesn't have internal property "__uuid".`);
+        });
+
         it(`reloads bulk array`, async () => {
             const MyClass = createClass(`users`).in(`test`);
 

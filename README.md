@@ -233,6 +233,12 @@
    - If 'ids' is strings, returns single instance
    - Else if 'ids' is an array of strings, returns `BulkArray` of instances
    
+ - `static async head(ids)`
+   - Performs ES 'mget' without '_source' field
+   - Throws when any of the IDs is not found
+   - If 'ids' is strings, returns single object
+   - Else if 'ids' is an array of strings, returns array of objects
+   
  - `static async delete(ids, ?version)`
    - Performs ES 'delete'
    - Uses bulk API
