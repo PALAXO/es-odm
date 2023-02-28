@@ -40,9 +40,10 @@ export interface elasticsearchAdditional {
 }
 
 function setClient(node: string | string[] | NodeOptions | NodeOptions[], additional: elasticsearchAdditional = void 0): void;
+type esClient = typeof Elasticsearch;
 
 export {
-    Elasticsearch as esClient,
+    esClient,
     setClient,
     errors as esErrors
 }

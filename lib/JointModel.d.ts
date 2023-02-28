@@ -9,10 +9,17 @@ import BaseModel, {
     SimplifiedSearch
 } from "./BaseModel";
 import BulkArray, {SearchArray} from "./BulkArray";
-import {Id, Ids, SearchHit} from "@elastic/elasticsearch/lib/api/types";
+import {Id, Ids, QueryDslQueryContainer, SearchHit} from "@elastic/elasticsearch/lib/api/types";
 
-export default class JointModel {
-    models: BaseModel = [];
+export interface JointModelModel<T = typeof BaseModel> {
+    model: typeof BaseModel,   //T
+    alias: Array<string>,
+    queries: Array<QueryDslQueryContainer>,
+    results: Array<InstanceType<T>> // | SearchHit<Record<string, any>>
+}
+
+export default class JointModel<T extends typeof BaseModel> {
+    models: Array<JointModelModel<T>>;
 
     constructor();
 
@@ -27,7 +34,7 @@ export default class JointModel {
      * @param OdmModel
      * @returns
      */
-    recordSearch<T extends typeof BaseModel>(OdmModel: T): T;
+    recordSearch(OdmModel: T): T;
 
     /**
      * Runs search function with all recorded queries. Supports implicit scrolling, explicit scrolling, searchAfter and Point in Time.
@@ -45,8 +52,8 @@ export default class JointModel {
      * - "autoPitSort" controls whether in case of PIT without any specified "sort" value should be descending "\_shard\_doc" sort automatically passed. Defaults to true.
      * @returns
      */
-    search<T extends BaseModel>(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditional = undefined): Promise<BulkArray<T>>;
-    search<T extends BaseModel>(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithoutSource = undefined): Promise<BulkArray<T>>;
+    search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditional = undefined): Promise<BulkArray<InstanceType<T>>>;
+    search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithoutSource = undefined): Promise<BulkArray<InstanceType<T>>>;
     search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithSource = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
@@ -62,8 +69,8 @@ export default class JointModel {
      * @param additional - Additional data
      * @returns
      */
-    bulkIterator<T extends BaseModel>(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncIterator<BulkArray<T>>;
-    bulkIterator<T extends BaseModel>(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncIterator<BulkArray<T>>;
+    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncIterator<BulkArray<InstanceType<T>>>;
+    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncIterator<BulkArray<InstanceType<T>>>;
     bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithSource = undefined): AsyncIterator<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
@@ -72,8 +79,8 @@ export default class JointModel {
      * @param additional - Additional data
      * @returns
      */
-    itemIterator<T extends BaseModel>(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncIterator<T>;
-    itemIterator<T extends BaseModel>(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncIterator<T>;
+    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncIterator<InstanceType<T>>;
+    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncIterator<InstanceType<T>>;
     itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithSource = undefined): AsyncIterator<SearchHit<Record<string, any>>>;
 
     /**

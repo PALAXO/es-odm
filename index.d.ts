@@ -12,6 +12,6 @@ type JointModel = typeof JointModel;
 export {
     createClass,
     BaseModel, BulkArray, JointModel,
-    esClient, setClient, esErrors,
+    esClient as esClient, setClient, esErrors as esErrors,
     setLoggerConfig, setLoggerUidFunction
 }
