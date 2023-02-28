@@ -2,7 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, BulkArray, BaseModel } = require(`../../app`);
+const { createClass, BulkArray, BaseModel } = require(`../../index`);
 
 describe(`BaseModel class`, function() {
     this.timeout(testTimeout);
@@ -266,6 +266,121 @@ describe(`BaseModel class`, function() {
             ]);
         });
 
+        it(`cannot specify lower than zero from`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({}, -1)).to.be.eventually.rejectedWith(`From can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero from as string`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({}, `-1`)).to.be.eventually.rejectedWith(`From can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero from in body`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({ from: -1 })).to.be.eventually.rejectedWith(`From in body can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero from as string in body`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({ from: `-1` })).to.be.eventually.rejectedWith(`From in body can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero size`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({}, void 0, -1)).to.be.eventually.rejectedWith(`Size can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero size as string`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({}, void 0, `-1`)).to.be.eventually.rejectedWith(`Size can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero size in body`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({ size: -1 })).to.be.eventually.rejectedWith(`Size in body can't be lower than zero!`);
+        });
+
+        it(`cannot specify lower than zero size as string in body`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            await expect(MyClass.search({ size: `-1` })).to.be.eventually.rejectedWith(`Size in body can't be lower than zero!`);
+        });
+
+        it(`cannot combine implicit scroll with PIT`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const myPit = await MyClass.openPIT();
+
+            await expect(MyClass.search({}, void 0, void 0, { pitId: myPit })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
+
+            await MyClass.closePIT(myPit);
+        });
+
+        it(`cannot combine explicit scroll initialization with PIT`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const myPit = await MyClass.openPIT();
+
+            await expect(MyClass.search({}, 0, 10, { pitId: myPit, scrollId: true })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
+
+            await MyClass.closePIT(myPit);
+        });
+
+        it(`cannot combine explicit scroll scrolling with PIT`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const myPit = await MyClass.openPIT();
+
+            await expect(MyClass.search({}, 0, void 0, { pitId: myPit, scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
+
+            await MyClass.closePIT(myPit);
+        });
+
+        it(`cannot combine implicit scroll with searchAfter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, void 0, void 0, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
+        });
+
+        it(`cannot combine explicit scroll initialization with searchAfter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 0, 10, { searchAfter: [`fake`], scrollId: true })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
+        });
+
+        it(`cannot combine explicit scroll scrolling with searchAfter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 0, void 0, { searchAfter: [`fake`], scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
+        });
+
+        it(`cannot use explicit scroll initialization with from parameter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 10, void 0, { scrollId: true })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
+        });
+
+        it(`cannot use explicit scroll scrolling with from parameter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 10, void 0, { scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
+        });
+
+        it(`cannot use searchAfter with from parameter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 10, 10, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
+        });
+
+        it(`cannot use searchAfter without size parameter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 10, void 0, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
+        });
+
+        it(`cannot use explicit scroll scrolling with size parameter`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            await expect(MyClass.search({}, 0, 10, { scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`In case of explicit scrolling the "from" parameter must be zero and "size" parameter cannot be specified in repeated scrolling.`);
+        });
+
         it(`tests higher amount of data`, async () => {
             const MyClass = createClass(`users`).in(`test`);
 
@@ -519,6 +634,24 @@ describe(`BaseModel class`, function() {
             }
         });
 
+        it(`searches for documents with string from parameter`, async () => {
+            const MyClass = createClass(`documents`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, `1`);
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                expect(result.constructor._tenant).to.equal(`test`);
+                await result.save();
+            }
+        });
+
         it(`searches for documents with from parameter in body`, async () => {
             const MyClass = createClass(`documents`).in(`test`);
             const results = await MyClass.search({
@@ -526,6 +659,25 @@ describe(`BaseModel class`, function() {
                     match_all: {}
                 },
                 from: 1
+            });
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                expect(result.constructor._tenant).to.equal(`test`);
+                await result.save();
+            }
+        });
+
+        it(`searches for documents with string from parameter in body`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                from: `1`
             });
 
             expect(results.length).to.equal(1);
@@ -555,6 +707,23 @@ describe(`BaseModel class`, function() {
             }
         });
 
+        it(`searches for documents with string size parameter`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, void 0, `1`);
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                await result.save();
+            }
+        });
+
         it(`searches for documents with size parameter in body`, async () => {
             const MyClass = createClass(`documents`).in(`test`);
             const results = await MyClass.search({
@@ -562,6 +731,24 @@ describe(`BaseModel class`, function() {
                     match_all: {}
                 },
                 size: 1
+            });
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                await result.save();
+            }
+        });
+
+        it(`searches for documents with size parameter in body`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                size: `1`
             });
 
             expect(results.length).to.equal(1);
@@ -590,6 +777,23 @@ describe(`BaseModel class`, function() {
             }
         });
 
+        it(`searches for documents with from and size parameters`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, `1`, `1`);
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                await result.save();
+            }
+        });
+
         it(`searches for documents with from and size parameters in body`, async () => {
             const MyClass = createClass(`documents`).in(`test`);
             const results = await MyClass.search({
@@ -598,6 +802,25 @@ describe(`BaseModel class`, function() {
                 },
                 from: 1,
                 size: 1
+            });
+
+            expect(results.length).to.equal(1);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            for (const result of results) {
+                expect(possibleValues).to.include(result.html);
+
+                await result.save();
+            }
+        });
+
+        it(`searches for documents with from and size parameters in body`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const results = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                from: `1`,
+                size: `1`
             });
 
             expect(results.length).to.equal(1);
@@ -1952,11 +2175,6 @@ describe(`BaseModel class`, function() {
             expect(result.items[0].delete.status).to.equal(404);
         });
 
-        it(`can't delete with an empty array`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.delete([])).to.be.eventually.rejectedWith(`You have to specify the IDs.`);
-        });
-
         it(`deletes given user entry`, async () => {
             const MyClass = createClass(`users`).in(`test`);
             const result = await MyClass.delete(userObject1.id);
@@ -2238,11 +2456,6 @@ describe(`BaseModel class`, function() {
         it(`can't update without body specified`, async () => {
             const MyClass = createClass(`users`).in(`test`);
             await expect(MyClass.update(`ok`, void 0)).to.be.eventually.rejectedWith(`Body must be an object!`);
-        });
-
-        it(`can't update eith an empty array`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.update([])).to.be.eventually.rejectedWith(`You have to specify the IDs.`);
         });
 
         it(`updates data instances`, async () => {

@@ -2,7 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, BulkArray } = require(`../../app`);
+const { createClass, BulkArray } = require(`../../index`);
 
 describe(`BulkArray class`, function() {
     this.timeout(testTimeout);
@@ -132,6 +132,70 @@ describe(`BulkArray class`, function() {
             expect(results2._source.fullname).to.equal(data2.fullname);
 
             expect(myInstance1._id).to.not.equal(myInstance2._id);
+        });
+
+        it(`saves only active data instances`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1);
+
+            const data2 = {
+                status: `:(`,
+                name: `cde`,
+                fullname: `cde xyz`
+            };
+            const myInstance2 = new MyClass(data2);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            bulk.finish(myInstance1);
+            const result = await bulk.save();
+
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(1);
+            expect(result.items[0].index.result).to.equal(`created`);
+
+            expect(myInstance1._id).to.be.undefined;
+
+            expect(myInstance2._id).not.to.be.undefined;
+            const results = await bootstrapTest.client.exists({
+                index: MyClass.alias,
+                id: myInstance2._id
+            });
+            expect(results).to.equal(true);
+        });
+
+        it(`doesn't save anything when no active instance is presented`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1);
+
+            const data2 = {
+                status: `:(`,
+                name: `cde`,
+                fullname: `cde xyz`
+            };
+            const myInstance2 = new MyClass(data2);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            bulk.finish(myInstance1);
+            bulk.reject(myInstance2);
+            const result = await bulk.save();
+
+            expect(result.errors).to.be.false;
+            expect(result.items.length).to.equal(0);
+
+            expect(myInstance1._id).to.be.undefined;
+            expect(myInstance2._id).to.be.undefined;
         });
 
         it(`saves data instances without immediate refresh`, async () => {
@@ -447,6 +511,62 @@ describe(`BulkArray class`, function() {
             expect(results2).to.be.false;
         });
 
+        it(`deletes only active data instances`, async () => {
+            const UserClass = createClass(`users`).in(`test`);
+            const DocumentClass = createClass(`documents`).in(`test`);
+
+            const myInstance1 = await UserClass.get(`ok`);
+            const myInstance2 = await DocumentClass.get(`document`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            bulk.finish(myInstance1);
+            const results = await bulk.delete();
+
+            expect(results.errors).to.be.false;
+            expect(results.items.length).to.equal(1);
+            expect(results.items[0].delete.result).to.equal(`deleted`);
+
+            const results1 = await bootstrapTest.client.exists({
+                index: myInstance1.constructor.alias,
+                id: myInstance1._id
+            });
+            expect(results1).to.be.true;
+
+            const results2 = await bootstrapTest.client.exists({
+                index: myInstance2.constructor.alias,
+                id: myInstance2._id
+            });
+            expect(results2).to.be.false;
+        });
+
+        it(`doesn't delete anything when no active instance is presented`, async () => {
+            const UserClass = createClass(`users`).in(`test`);
+            const DocumentClass = createClass(`documents`).in(`test`);
+
+            const myInstance1 = await UserClass.get(`ok`);
+            const myInstance2 = await DocumentClass.get(`document`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            bulk.finish(myInstance1);
+            bulk.reject(myInstance2);
+            const results = await bulk.delete();
+
+            expect(results.errors).to.be.false;
+            expect(results.items.length).to.equal(0);
+
+            const results1 = await bootstrapTest.client.exists({
+                index: myInstance1.constructor.alias,
+                id: myInstance1._id
+            });
+            expect(results1).to.be.true;
+
+            const results2 = await bootstrapTest.client.exists({
+                index: myInstance2.constructor.alias,
+                id: myInstance2._id
+            });
+            expect(results2).to.be.true;
+        });
+
         it(`deletes array with specified version`, async () => {
             const MyClass = createClass(`users`).in(`test`);
 
@@ -601,6 +721,216 @@ describe(`BulkArray class`, function() {
             expect(myInstance2.status).to.equal(`:/`);
             expect(myInstance2.name).to.equal(`DEF`);
             expect(myInstance2.fullname).to.equal(`DEF abc`);
+        });
+
+        it(`reloads bulk array and rejects not presented item`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data, `ok`);
+
+            const bulk = new BulkArray(myInstance1);
+            await bulk.save();
+
+            const oldVersion1 = myInstance1._version;
+            const oldSeqNo1 = myInstance1._seq_no;
+
+            await bootstrapTest.client.index({
+                index: MyClass.alias,
+                id: `ok`,
+                document: {
+                    status: `:D`,
+                    name: `ABC`,
+                    fullname: `ABC def`
+                },
+                refresh: true
+            });
+
+            const myInstance2 = new MyClass(data, `ko`);
+            bulk.push(myInstance2);
+            await bulk.reload();
+
+            bulk.clear();
+
+            expect(bulk.length).to.equal(1);
+            expect(myInstance1._id).to.equal(`ok`);
+            expect(myInstance1._version).to.not.equal(oldVersion1);
+            expect(myInstance1._seq_no).to.not.equal(oldSeqNo1);
+            expect(myInstance1.status).to.equal(`:D`);
+            expect(myInstance1.name).to.equal(`ABC`);
+            expect(myInstance1.fullname).to.equal(`ABC def`);
+
+            expect(bulk.__rejected.length).to.equal(1);
+            expect(bulk.__rejected[0]).to.deep.equal(myInstance2);
+        });
+
+        it(`reloads only active data instances`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data, `ok`);
+            const myInstance2 = new MyClass(data, `ko`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            await bulk.save();
+
+            const oldVersion1 = myInstance1._version;
+            const oldSeqNo1 = myInstance1._seq_no;
+
+            const oldVersion2 = myInstance2._version;
+            const oldSeqNo2 = myInstance2._seq_no;
+
+            await bootstrapTest.client.index({
+                index: MyClass.alias,
+                id: `ok`,
+                document: {
+                    status: `:D`,
+                    name: `ABC`,
+                    fullname: `ABC def`
+                },
+                refresh: true
+            });
+            await bootstrapTest.client.index({
+                index: MyClass.alias,
+                id: `ko`,
+                document: {
+                    status: `:/`,
+                    name: `DEF`,
+                    fullname: `DEF abc`
+                },
+                refresh: true
+            });
+
+            bulk.finish(myInstance1);
+            await bulk.reload();
+
+            expect(myInstance1._id).to.equal(`ok`);
+            expect(myInstance1._version).to.equal(oldVersion1);
+            expect(myInstance1._seq_no).to.equal(oldSeqNo1);
+            expect(myInstance1.status).to.equal(`:)`);
+            expect(myInstance1.name).to.equal(`abc`);
+            expect(myInstance1.fullname).to.equal(`abc def`);
+
+            expect(myInstance2._id).to.equal(`ko`);
+            expect(myInstance2._version).to.not.equal(oldVersion2);
+            expect(myInstance2._seq_no).to.not.equal(oldSeqNo2);
+            expect(myInstance2.status).to.equal(`:/`);
+            expect(myInstance2.name).to.equal(`DEF`);
+            expect(myInstance2.fullname).to.equal(`DEF abc`);
+        });
+
+        it(`doesn't reload anything when no active instance is presented`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const data = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data, `ok`);
+            const myInstance2 = new MyClass(data, `ko`);
+
+            const bulk = new BulkArray(myInstance1, myInstance2);
+            await bulk.save();
+
+            const oldVersion1 = myInstance1._version;
+            const oldSeqNo1 = myInstance1._seq_no;
+
+            const oldVersion2 = myInstance2._version;
+            const oldSeqNo2 = myInstance2._seq_no;
+
+            await bootstrapTest.client.index({
+                index: MyClass.alias,
+                id: `ok`,
+                document: {
+                    status: `:D`,
+                    name: `ABC`,
+                    fullname: `ABC def`
+                },
+                refresh: true
+            });
+            await bootstrapTest.client.index({
+                index: MyClass.alias,
+                id: `ko`,
+                document: {
+                    status: `:/`,
+                    name: `DEF`,
+                    fullname: `DEF abc`
+                },
+                refresh: true
+            });
+
+            bulk.finish(myInstance1);
+            bulk.reject(myInstance2);
+            await bulk.reload();
+
+            expect(myInstance1._id).to.equal(`ok`);
+            expect(myInstance1._version).to.equal(oldVersion1);
+            expect(myInstance1._seq_no).to.equal(oldSeqNo1);
+            expect(myInstance1.status).to.equal(`:)`);
+            expect(myInstance1.name).to.equal(`abc`);
+            expect(myInstance1.fullname).to.equal(`abc def`);
+
+            expect(myInstance2._id).to.equal(`ko`);
+            expect(myInstance2._version).to.equal(oldVersion2);
+            expect(myInstance2._seq_no).to.equal(oldSeqNo2);
+            expect(myInstance2.status).to.equal(`:)`);
+            expect(myInstance2.name).to.equal(`abc`);
+            expect(myInstance2.fullname).to.equal(`abc def`);
+        });
+    });
+
+    describe(`importStatus()`, () => {
+        it(`imports statuses of another bulk arrays`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            const data1 = {
+                status: `:)`,
+                name: `abc`,
+                fullname: `abc def`
+            };
+            const myInstance1 = new MyClass(data1);
+
+            const data2 = {
+                status: `:(`,
+                name: `cde`,
+                fullname: `cde xyz`
+            };
+            const myInstance2 = new MyClass(data2);
+
+            const bulk1 = new BulkArray(myInstance1, myInstance2);
+            await bulk1.save();
+
+            const bulk2 = new BulkArray(myInstance1);
+            await bulk2.delete();
+
+            const myBulk = new BulkArray();
+            myBulk.importStatus(bulk1, bulk2);
+
+            const status = Object.values(myBulk.status);
+            expect(status.length).to.equal(2);
+            const savedItem = status.find((item) => (item.id === myInstance2._id));
+            expect(savedItem).not.to.be.undefined;
+            const deletedItem = status.find((item) => (item.id === myInstance1._id));
+            expect(deletedItem).not.to.be.undefined;
+
+            const esStatus = myBulk.esStatus();
+            expect(esStatus.items).to.be.empty;
+            expect(esStatus.errors).to.be.false;
+            expect(esStatus.count).to.equal(2);
+
+            const esStatusFull = myBulk.esStatus(true);
+            expect(esStatusFull.items.length).to.equal(2);
+            expect(esStatusFull.errors).to.be.false;
+            expect(esStatusFull.count).to.equal(2);
         });
     });
 

@@ -2,7 +2,7 @@ import {AggregateName, AggregationsAggregate, BulkResponse} from "@elastic/elast
 import BaseModel from "./BaseModel";
 
 /** Exportable item status */
-export declare interface BulkArrayStatusItemExternal {
+export interface BulkArrayStatusItemExternal {
     /** Document alias (or index) */
     index: string,
     /** Document ID */
@@ -16,16 +16,16 @@ export declare interface BulkArrayStatusItemExternal {
 }
 
 /** Internal status item */
-export declare interface BulkArrayStatusItemInternal extends BulkArrayStatusItemExternal {
+export interface BulkArrayStatusItemInternal extends BulkArrayStatusItemExternal {
     /** Document state */
     state: Symbol
 }
 
 /** Internal object with statuses */
-export declare type BulkArrayStatusInternal = Record<string, BulkArrayStatusItemInternal>;
+export type BulkArrayStatusInternal = Record<string, BulkArrayStatusItemInternal>;
 
 /** Exportable item status */
-export declare interface BulkArrayStatusExternal {
+export interface BulkArrayStatusExternal {
     /** Item statuses */
     items: Array<BulkArrayStatusItemExternal>,
     /** Have there been any errors? */
@@ -33,7 +33,6 @@ export declare interface BulkArrayStatusExternal {
     /** Number of items */
     count: number
 }
-
 
 export class SearchArray<T> extends Array<T> {
     /** ES aggregations */
@@ -60,10 +59,10 @@ export default class BulkArray<T extends BaseModel = BaseModel> extends SearchAr
     __status: BulkArrayStatusInternal;
 
     /** Array with rejected items */
-    __rejected: Array<any>;
+    __rejected: Array<T>;
 
     /** Array with finished items */
-    __finished: Array<any>;
+    __finished: Array<T>;
 
     constructor(...args?: Array<T>);
 

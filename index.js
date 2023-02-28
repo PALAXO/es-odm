@@ -6,7 +6,7 @@ const _ = require(`lodash`);
 const BaseModel = require(`./lib/BaseModel`);
 const JointModel = require(`./lib/JointModel`);
 const BulkArray = require(`./lib/BulkArray`);
-const { esClient, setClient, esErrors } = require(`./lib/ElasticSearch`);
+const { esClient, setClient, esErrors } = require(`./lib/elasticsearch`);
 const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
 const utils = require(`./lib/utils`);
 

@@ -2,7 +2,7 @@
 
 const Joi = require(`@hapi/joi`);
 const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, JointModel, BulkArray } = require(`../../app`);
+const { createClass, JointModel, BulkArray } = require(`../../index`);
 
 describe(`JointModel class`, function() {
     this.timeout(testTimeout);
@@ -1516,6 +1516,94 @@ describe(`JointModel class`, function() {
             //can't clear one more time
             result = await myJoint.clearScroll(scrollId);
             expect(result).to.be.false;
+        });
+    });
+
+    describe(`clearSearch()`, () => {
+        let userObject1;
+        let userObject2;
+        let defaultDocument;
+
+        beforeEach(async () => {
+            userObject1 = {
+                index: `test_users`,
+                document: {
+                    status: `:)`,
+                    name: `happy`
+                },
+                id: `ok`,
+                refresh: true
+            };
+            userObject2 = {
+                index: `test_users`,
+                document: {
+                    status: `:(`,
+                    name: `sad`
+                },
+                id: void 0,
+                refresh: true
+            };
+            defaultDocument = {
+                index: `test_documents`,
+                document: {
+                    html: `d_default`
+                },
+                id: `document`,
+                refresh: true
+            };
+
+            await Promise.all([
+                bootstrapTest.client.index(userObject1),
+                bootstrapTest.client.index(userObject2),
+                bootstrapTest.client.index(defaultDocument)
+            ]);
+        });
+
+        it(`Clears when no model specified`, async () => {
+            const jointModel = new JointModel();
+
+            jointModel.clearSearch();
+        });
+
+        it(`clears when no search is recorded`, async () => {
+            const jointModel = new JointModel();
+
+            jointModel.recordSearch(createClass(`users`).in(`test`));
+
+            jointModel.clearSearch();
+        });
+
+        it(`clears after search is performed but data are not yet received`, async () => {
+            const jointModel = new JointModel();
+
+            const MyClass = jointModel.recordSearch(createClass(`users`).in(`test`));
+            await MyClass.search(void 0);
+
+            jointModel.clearSearch();
+
+            await expect(jointModel.search()).to.be.eventually.rejectedWith(`No search has been recorded!`);
+        });
+
+        it(`clears after search is performed and data are received`, async () => {
+            const jointModel = new JointModel();
+
+            const MyClass = jointModel.recordSearch(createClass(`users`).in(`test`));
+            await MyClass.search(void 0);
+
+            let results = await jointModel.search();
+            expect(results.length).to.greaterThanOrEqual(0);
+
+            results = await jointModel.search();
+            expect(results.length).to.greaterThanOrEqual(0);
+
+            jointModel.clearSearch();
+
+            await expect(jointModel.search()).to.be.eventually.rejectedWith(`No search has been recorded!`);
+
+            await MyClass.search(void 0);
+
+            results = await jointModel.search();
+            expect(results.length).to.greaterThanOrEqual(0);
         });
     });
 

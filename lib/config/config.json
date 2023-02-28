@@ -12,15 +12,15 @@
   },
   "es": {
     "url": "http://localhost:9200",
-    "requestTimeout": 120000,
+    "requestTimeoutSeconds": 120,
     "maxResults": 10000,
     "scrollSize": 1000,
-    "scrollTimeoutSeconds": 5,
+    "scrollTimeoutSeconds": 10,
     "pitTimeoutSeconds": 60,
     "retryOnConflict": 10,
     "retries":  {
       "base": 2.0,
-      "maxRetries": 5
+      "maxRetries": 6
     }
   },
   "logger": {

@@ -24,15 +24,15 @@ import {
     UpdateByQueryResponse
 } from "@elastic/elasticsearch/lib/api/types";
 
-export declare interface SimplifiedSearch extends Omit<SearchRequest, `index`|`_source`|`seq_no_primary_term`|`version`|`track_total_hits`|`scroll`|`search_after`|`pit`> {}
-export declare interface SimplifiedUpdateByQuery extends Omit<UpdateByQueryRequest, `index`|`scroll_size`|`refresh`|`version`|`slices`|`wait_for_completion`> {}
-export declare interface SimplifiedDeleteByQuery extends Omit<DeleteByQueryRequest, `index`|`scroll_size`|`refresh`|`version`|`slices`|`wait_for_completion`> {}
-export declare interface SimplifiedIndicesCreate extends Omit<IndicesCreateRequest, `index`> {}
-export declare interface SimplifiedIndicesPutMapping extends Omit<IndicesPutMappingRequest, `index`> {}
-export declare interface SimplifiedIndicesPutSettings extends Omit<IndicesPutSettingsRequest, `index`> {}
+export interface SimplifiedSearch extends Omit<SearchRequest, `index`|`_source`|`seq_no_primary_term`|`version`|`track_total_hits`|`scroll`|`search_after`|`pit`> {}
+export interface SimplifiedUpdateByQuery extends Omit<UpdateByQueryRequest, `index`|`scroll_size`|`refresh`|`version`|`slices`|`wait_for_completion`> {}
+export interface SimplifiedDeleteByQuery extends Omit<DeleteByQueryRequest, `index`|`scroll_size`|`refresh`|`version`|`slices`|`wait_for_completion`> {}
+export interface SimplifiedIndicesCreate extends Omit<IndicesCreateRequest, `index`> {}
+export interface SimplifiedIndicesPutMapping extends Omit<IndicesPutMappingRequest, `index`> {}
+export interface SimplifiedIndicesPutSettings extends Omit<IndicesPutSettingsRequest, `index`> {}
 
 /** Parsed index */
-export declare interface ParsedIndex {
+export interface ParsedIndex {
     /** Tenant part of the index/alias */
     tenant: string,
     /** Main part of the index/alias */
@@ -41,47 +41,63 @@ export declare interface ParsedIndex {
     alias?: string
 }
 
-/** Search additional main parameters */
-export declare interface SearchAdditionalMain {
+/** Search additional main base parameters */
+export interface ModelItemIteratorAdditional {
     /** Cache object passed to "\_afterSearch" function. */
     cache?: Record<string, any>,
     /** refresh time in seconds used for scrolling or PIT. */
     refresh?: number
+}
+
+/** Search additional main base parameters without source */
+export interface ModelItemIteratorAdditionalWithoutSource extends ModelItemIteratorAdditional {
+    /** Passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned. */
+    source: undefined | null
+}
+
+/** Search additional main base parameters with source */
+export interface ModelItemIteratorAdditionalWithSource extends ModelItemIteratorAdditional {
+    /** Passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned. */
+    source: NonNullable<boolean | Array<string>>
+}
+
+/** Search additional main parameters */
+export interface ModelBulkIteratorAdditional extends ModelItemIteratorAdditional  {
     /** Controls if "\_total" value in resulting field should be populated. Defaults to true, except for searchAfter or search with PIT where it defaults to false. */
     trackTotalHits?: boolean
 }
 
 /** Search additional main parameters without source */
-export declare interface SearchAdditionalMainWithoutSource extends SearchAdditionalMain {
+export interface ModelBulkIteratorAdditionalWithoutSource extends ModelBulkIteratorAdditional {
     /** Passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned. */
     source: undefined | null
 }
 
 /** Search additional main parameters with source */
-export declare interface SearchAdditionalMainWithSource extends SearchAdditionalMain {
+export interface ModelBulkIteratorAdditionalWithSource extends ModelBulkIteratorAdditional {
     /** Passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned. */
     source: NonNullable<boolean | Array<string>>
 }
 
 /** Search additional parameters */
-export declare interface SearchAdditional extends SearchAdditionalMain {
+export interface ModelSearchAdditional extends ModelBulkIteratorAdditional {
     /** Used for explicit scrolling. Specify "true" to initialize scrolling, or scroll ID to continue scrolling. */
     scrollId?: (string|boolean),
     /** Array with last item sort result, used for searchAfter deep pagination. */
     searchAfter?: Array<any>,
     /** Point in Time ID. */
-    pitId?: string
+    pitId?: string,
     /** Controls whether in case of PIT without any specified "sort" value should be descending "\_shard\_doc" sort automatically passed. Defaults to true. */
     autoPitSort?: boolean
 }
 
 /** Search additional parameters without source */
-export declare interface SearchAdditionalWithoutSource extends SearchAdditional {
+export interface ModelSearchAdditionalWithoutSource extends ModelSearchAdditional {
     /** Passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned. */
     source: undefined | null
 }
 /** Search additional parameters with source */
-export declare interface SearchAdditionalWithSource extends SearchAdditional {
+export interface ModelSearchAdditionalWithSource extends ModelSearchAdditional {
     /** Passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned. */
     source: NonNullable<boolean | Array<string>>
 }
@@ -95,6 +111,11 @@ export default class BaseModel {
     static _name: string;
     /** Type of ES refresh */
     static _immediateRefresh: boolean = true;
+    /**
+     * Special array property, if exists it saves the "search" queries and disables the function
+     * Internally used for JointModel "recordSearch"
+     */
+    static __recordSearch: Array<{}> = undefined;
 
     /** ES id */
     _id?: string;
@@ -155,9 +176,9 @@ export default class BaseModel {
      * - "autoPitSort" controls whether in case of PIT without any specified "sort" value should be descending "\_shard\_doc" sort automatically passed. Defaults to true.
      * @returns
      */
-    static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: SearchAdditional = undefined): Promise<BulkArray<InstanceType<this>>>;
-    static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: SearchAdditionalWithoutSource = undefined): Promise<BulkArray<InstanceType<this>>>;
-    static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: SearchAdditionalWithSource = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
+    static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditional = undefined): Promise<BulkArray<InstanceType<this>>>;
+    static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithoutSource = undefined): Promise<BulkArray<InstanceType<this>>>;
+    static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithSource = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
      * Clears ES scroll ID
@@ -172,9 +193,9 @@ export default class BaseModel {
      * @param additional - Additional data
      * @returns
      */
-    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: SearchAdditionalMain = undefined): AsyncIterator<BulkArray<InstanceType<this>>>;
-    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: SearchAdditionalMainWithoutSource = undefined): AsyncIterator<BulkArray<InstanceType<this>>>;
-    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: SearchAdditionalMainWithSource = undefined): AsyncIterator<SearchArray<SearchHit<Record<string, any>>>>;
+    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncIterator<BulkArray<InstanceType<this>>>;
+    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncIterator<BulkArray<InstanceType<this>>>;
+    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithSource = undefined): AsyncIterator<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
      * Returns iterator over documents
@@ -182,9 +203,9 @@ export default class BaseModel {
      * @param additional - Additional data
      * @returns
      */
-    static itemIterator(body?: SimplifiedSearch = undefined, additional?: SearchAdditionalMain = undefined): AsyncIterator<InstanceType<this>>;
-    static itemIterator(body?: SimplifiedSearch = undefined, additional?: SearchAdditionalMainWithoutSource = undefined): AsyncIterator<InstanceType<this>>;
-    static itemIterator(body?: SimplifiedSearch = undefined, additional?: SearchAdditionalMainWithSource = undefined): AsyncIterator<SearchHit<Record<string, any>>>;
+    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncIterator<InstanceType<this>>;
+    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncIterator<InstanceType<this>>;
+    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithSource = undefined): AsyncIterator<SearchHit<Record<string, any>>>;
 
     /**
      * Finds all entries
