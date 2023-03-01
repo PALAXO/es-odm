@@ -11,11 +11,11 @@ import BaseModel, {
 import BulkArray, {SearchArray} from "./BulkArray";
 import {Id, Ids, QueryDslQueryContainer, SearchHit} from "@elastic/elasticsearch/lib/api/types";
 
-export interface JointModelModel<T = typeof BaseModel> {
-    model: typeof BaseModel,   //T
+export interface JointModelModel<T extends typeof BaseModel = typeof BaseModel> {
+    model: T,
     alias: Array<string>,
     queries: Array<QueryDslQueryContainer>,
-    results: Array<InstanceType<T>> // | SearchHit<Record<string, any>>
+    results: Array<InstanceType<T> | SearchHit<Record<string, any>>>
 }
 
 export default class JointModel<T extends typeof BaseModel> {
@@ -69,9 +69,9 @@ export default class JointModel<T extends typeof BaseModel> {
      * @param additional - Additional data
      * @returns
      */
-    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncIterator<BulkArray<InstanceType<T>>>;
-    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncIterator<BulkArray<InstanceType<T>>>;
-    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithSource = undefined): AsyncIterator<SearchArray<SearchHit<Record<string, any>>>>;
+    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncGenerator<BulkArray<InstanceType<T>>>;
+    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncGenerator<BulkArray<InstanceType<T>>>;
+    bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithSource = undefined): AsyncGenerator<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
      * Returns iterator over documents
@@ -79,9 +79,9 @@ export default class JointModel<T extends typeof BaseModel> {
      * @param additional - Additional data
      * @returns
      */
-    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncIterator<InstanceType<T>>;
-    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncIterator<InstanceType<T>>;
-    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithSource = undefined): AsyncIterator<SearchHit<Record<string, any>>>;
+    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncGenerator<InstanceType<T>>;
+    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncGenerator<InstanceType<T>>;
+    itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithSource = undefined): AsyncGenerator<SearchHit<Record<string, any>>>;
 
     /**
      * Removes all recorded searches

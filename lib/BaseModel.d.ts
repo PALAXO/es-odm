@@ -193,9 +193,9 @@ export default class BaseModel {
      * @param additional - Additional data
      * @returns
      */
-    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncIterator<BulkArray<InstanceType<this>>>;
-    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncIterator<BulkArray<InstanceType<this>>>;
-    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithSource = undefined): AsyncIterator<SearchArray<SearchHit<Record<string, any>>>>;
+    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditional = undefined): AsyncGenerator<BulkArray<InstanceType<this>>>;
+    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithoutSource = undefined): AsyncGenerator<BulkArray<InstanceType<this>>>;
+    static bulkIterator(body?: SimplifiedSearch = undefined, additional?: ModelBulkIteratorAdditionalWithSource = undefined): AsyncGenerator<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
      * Returns iterator over documents
@@ -203,9 +203,9 @@ export default class BaseModel {
      * @param additional - Additional data
      * @returns
      */
-    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncIterator<InstanceType<this>>;
-    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncIterator<InstanceType<this>>;
-    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithSource = undefined): AsyncIterator<SearchHit<Record<string, any>>>;
+    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditional = undefined): AsyncGenerator<InstanceType<this>>;
+    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithoutSource = undefined): AsyncGenerator<InstanceType<this>>;
+    static itemIterator(body?: SimplifiedSearch = undefined, additional?: ModelItemIteratorAdditionalWithSource = undefined): AsyncGenerator<SearchHit<Record<string, any>>>;
 
     /**
      * Finds all entries
@@ -221,9 +221,7 @@ export default class BaseModel {
      * @param source - Boolean or optional array with source fields -> if specified, function returns plain objects
      * @returns
      */
-    static async find(ids: string, source?: undefined | null = undefined): Promise<InstanceType<this>>;
     static async find(ids: Array<string>, source?: undefined | null = undefined): Promise<BulkArray<InstanceType<this>>>;
-    static async find(ids: string, source?: boolean | Array<string> = undefined): Promise<SearchHit<Record<string, any>>>;
     static async find(ids: Array<string>, source?: boolean | Array<string> = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
