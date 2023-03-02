@@ -221,8 +221,8 @@ export default class BaseModel {
      * @param source - Boolean or optional array with source fields -> if specified, function returns plain objects
      * @returns
      */
-    static async find(ids: Array<string>, source?: undefined | null = undefined): Promise<BulkArray<InstanceType<this>>>;
-    static async find(ids: Array<string>, source?: boolean | Array<string> = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
+    static async find(ids: string | Array<string>, source?: undefined | null = undefined): Promise<BulkArray<InstanceType<this>>>;
+    static async find(ids: string | Array<string>, source?: boolean | Array<string> = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
 
     /**
      * Gets entries by given string or array of strings
