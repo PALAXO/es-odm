@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "ODM",
   "keywords": [
     "circularo",
@@ -29,7 +29,7 @@
     "bunyan": "1.8.15",
     "lodash": "4.17.21",
     "nconf": "0.12.0",
-    "oboe": "2.1.5",
+    "stream-json": "1.7.5",
     "uuid": "9.0.0"
   },
   "devDependencies": {
