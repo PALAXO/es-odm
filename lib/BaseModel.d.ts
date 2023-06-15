@@ -45,7 +45,9 @@ export interface ParsedIndex {
 export interface ModelItemIteratorAdditional {
     /** Cache object passed to "\_afterSearch" function. */
     cache?: Record<string, any>,
-    /** refresh time in seconds used for scrolling or PIT. */
+    /** Optional PIT ID to be used, in this case the iterator is not closed automatically */
+    pitId?: string,
+    /** refresh time in seconds used for PIT. */
     refresh?: number
 }
 
@@ -63,7 +65,7 @@ export interface ModelItemIteratorAdditionalWithSource extends ModelItemIterator
 
 /** Search additional main parameters */
 export interface ModelBulkIteratorAdditional extends ModelItemIteratorAdditional  {
-    /** Controls if "\_total" value in resulting field should be populated. Defaults to true, except for searchAfter or search with PIT where it defaults to false. */
+    /** Controls if "\_total" value in resulting field should be populated. Defaults to true. */
     trackTotalHits?: boolean
 }
 
@@ -81,8 +83,6 @@ export interface ModelBulkIteratorAdditionalWithSource extends ModelBulkIterator
 
 /** Search additional parameters */
 export interface ModelSearchAdditional extends ModelBulkIteratorAdditional {
-    /** Used for explicit scrolling. Specify "true" to initialize scrolling, or scroll ID to continue scrolling. */
-    scrollId?: (string|boolean),
     /** Array with last item sort result, used for searchAfter deep pagination. */
     searchAfter?: Array<any>,
     /** Point in Time ID. */
@@ -161,31 +161,23 @@ export default class BaseModel {
     static get alias(): string;
 
     /**
-     * Performs ES search. Supports implicit scrolling, explicit scrolling, searchAfter and Point in Time.
-     * @param body - Body object; ignored when explicitly scrolling after the initial request
-     * @param from - Start entry; cannot be used in case of explicit scrolling or when searchAfter is specified
-     * @param size - Number of returned entries or bulk size in case of explicit scrolling; cannot be used when explicitly scrolling after the initial request
+     * Runs search function with all recorded queries. Supports searchAfter and Point in Time.
+     * @param body - Body object
+     * @param from - Start entry; cannot be used in case of explicit PIT or when searchAfter is specified
+     * @param size - Number of returned entries or bulk size in case of explicit PIT
      * @param additional - Additional data
      * - "cache" is cache object passed to "\_afterSearch" function.
      * - "source" is passed to ES "_source" and controls output of this function. If not specified BulkArray with BaseModel instances is returned. Otherwise normal array with plain ES objects is returned.
-     * - "scrollId" is used for explicit scrolling. Specify "true" to initialize scrolling, or scroll ID to continue scrolling.
      * - "searchAfter" is array with last item sort result, used for searchAfter deep pagination.
-     * - "pitId" is Point in Time ID.
-     * - "refresh" is refresh time in seconds used for scrolling or PIT
-     * - "trackTotalHits" controls if "\_total" value in resulting field should be populated. Defaults to true, except for searchAfter or search with PIT where it defaults to false.
+     * - "pitId" is Point in Time ID. When specified it will use it for explicit PIT and it will not be closed.
+     * - "refresh" is refresh time in seconds used for PIT
+     * - "trackTotalHits" controls if "\_total" value in resulting field should be populated. Defaults to true.
      * - "autoPitSort" controls whether in case of PIT without any specified "sort" value should be descending "\_shard\_doc" sort automatically passed. Defaults to true.
      * @returns
      */
     static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditional = undefined): Promise<BulkArray<InstanceType<this>>>;
     static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithoutSource = undefined): Promise<BulkArray<InstanceType<this>>>;
     static search(body?: SimplifiedSearch = {}, from?: number = undefined, size?: number = undefined, additional?: ModelSearchAdditionalWithSource = undefined): Promise<SearchArray<SearchHit<Record<string, any>>>>;
-
-    /**
-     * Clears ES scroll ID
-     * @param scrollId - Scroll ID
-     * @returns
-     */
-    static clearScroll(scrollId: Ids): Promise<boolean>;
 
     /**
      * Returns iterator over bulks
@@ -505,7 +497,7 @@ export default class BaseModel {
     static _afterSearch(instances: BulkArray<InstanceType<this>>, cache?: Record<string, any> = void 0): Promise<void>;
 
     /**
-     * Returns best bulk size for the model. This size is used for searching/scrolling/iterating
+     * Returns best bulk size for the model. This size is used primarily for pagination
      * @returns
      */
     static _getBulkSize(): Promise<number>;

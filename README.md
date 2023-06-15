@@ -187,7 +187,7 @@
    - It consists of tenant and name
 
 ##### Class level API
- - `static async search(body, ?from, ?size, ?source, ?explicitScroll, ?additional)`
+ - `static async search(body, ?from, ?size, ?additional)`
    - Performs ES search
    - Returns `BulkArray` of instances
    - Used by another static functions
@@ -196,18 +196,8 @@
      - `alias` is already defined in the class
    - `from` and `size` are optional
      - Returns all results if `from` / `size` are not specified, no matter how many there are
-       - Uses scroll API
-   - `source` can be used to return plain object with only required source fields
-   - `explicitScroll` can be used to either initialize scrolling or continue in it
-     - Specify a scroll ID to continue in scrolling; or specify a number to initialize new scrolling
-     - In case of a positive number, this is used as a scroll timout (otherwise `scrollRefresh` from `additional is used or default value)
    - `additional` is an optional object with additional data
-     - `cache` is a cache object
-     - `scrollRefresh` is optional scroll refresh time
-   
- - `static async clearScroll(scrollId)`
-   - Deletes existing scroll
-   - Returns ES response
+
 
  - `static async *bulkIterator(body, ?source, ?bulkSize, ?additional)`
    - Async generator for iterating over bulks of documents
@@ -399,5 +389,5 @@
 
 - `static async _getBulkSize()`
     - Returns optimal size of bulk for given model
-    - Used in `search` function for scrolling
+    - Used in `search` function for pagination
  

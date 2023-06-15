@@ -159,6 +159,9 @@ before(async function() {
                 },
                 html: {
                     type: `keyword`
+                },
+                text: {
+                    type: `text`
                 }
             }
         }

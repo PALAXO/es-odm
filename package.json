@@ -1,6 +1,6 @@
 {
   "name": "es-odm",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "description": "ODM",
   "keywords": [
     "circularo",
@@ -30,13 +30,13 @@
     "bunyan": "1.8.15",
     "lodash": "4.17.21",
     "nconf": "0.12.0",
-    "stream-json": "1.7.5",
+    "stream-json": "1.8.0",
     "uuid": "9.0.0"
   },
   "devDependencies": {
     "chai": "4.3.7",
     "chai-as-promised": "7.1.1",
-    "eslint": "8.35.0",
+    "eslint": "8.42.0",
     "eslint-plugin-mocha": "10.1.0",
     "eslint-plugin-promise": "6.1.1",
     "mocha": "10.2.0",

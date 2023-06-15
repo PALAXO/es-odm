@@ -314,71 +314,25 @@ describe(`BaseModel class`, function() {
             await expect(MyClass.search({ size: `-1` })).to.be.eventually.rejectedWith(`Size in body can't be lower than zero!`);
         });
 
-        it(`cannot combine implicit scroll with PIT`, async () => {
+        it(`cannot specify non zero from along with explicit PIT`, async () => {
             const MyClass = createClass(`users`).in(`test`);
-            const myPit = await MyClass.openPIT();
+            const pitId = await MyClass.openPIT();
 
-            await expect(MyClass.search({}, void 0, void 0, { pitId: myPit })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
-
-            await MyClass.closePIT(myPit);
-        });
-
-        it(`cannot combine explicit scroll initialization with PIT`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            const myPit = await MyClass.openPIT();
-
-            await expect(MyClass.search({}, 0, 10, { pitId: myPit, scrollId: true })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
-
-            await MyClass.closePIT(myPit);
-        });
-
-        it(`cannot combine explicit scroll scrolling with PIT`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            const myPit = await MyClass.openPIT();
-
-            await expect(MyClass.search({}, 0, void 0, { pitId: myPit, scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
-
-            await MyClass.closePIT(myPit);
-        });
-
-        it(`cannot combine implicit scroll with searchAfter`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, void 0, void 0, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
-        });
-
-        it(`cannot combine explicit scroll initialization with searchAfter`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 0, 10, { searchAfter: [`fake`], scrollId: true })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
-        });
-
-        it(`cannot combine explicit scroll scrolling with searchAfter`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 0, void 0, { searchAfter: [`fake`], scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`You cannot use scrolling along with searchAfter or Point in Time.`);
-        });
-
-        it(`cannot use explicit scroll initialization with from parameter`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 10, void 0, { scrollId: true })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
-        });
-
-        it(`cannot use explicit scroll scrolling with from parameter`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 10, void 0, { scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
+            await expect(MyClass.search({
+                query: {
+                    match_all: {}
+                }
+            }, 15, void 0, { pitId: pitId })).to.be.eventually.rejectedWith(`In case of specifying "pitId" parameter the "from" parameter must result to zero.`);
         });
 
         it(`cannot use searchAfter with from parameter`, async () => {
             const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 10, 10, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
+            await expect(MyClass.search({}, 10, 10, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`In case of specifying "searchAfter" parameter the "from" parameter must result to zero.`);
         });
 
         it(`cannot use searchAfter without size parameter`, async () => {
             const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 10, void 0, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`In case of explicit scrolling or using searchAfter function the "from" parameter must be zero`);
-        });
-
-        it(`cannot use explicit scroll scrolling with size parameter`, async () => {
-            const MyClass = createClass(`users`).in(`test`);
-            await expect(MyClass.search({}, 0, 10, { scrollId: `fakeScrollId` })).to.be.eventually.rejectedWith(`In case of explicit scrolling the "from" parameter must be zero and "size" parameter cannot be specified in repeated scrolling.`);
+            await expect(MyClass.search({}, 10, void 0, { searchAfter: [`fake`] })).to.be.eventually.rejectedWith(`In case of specifying "searchAfter" parameter the "from" parameter must result to zero.`);
         });
 
         it(`tests higher amount of data`, async () => {
@@ -869,7 +823,7 @@ describe(`BaseModel class`, function() {
             }
         });
 
-        it(`searches and manually scrolls by max sizes (10k)`, async () => {
+        it(`searches and manually paginates by max sizes (10k)`, async () => {
             await bootstrapTest.deleteData();
 
             const MyClass = createClass(`users`).in(`test`);
@@ -893,7 +847,9 @@ describe(`BaseModel class`, function() {
                 refresh: true
             });
 
-            let results = await MyClass.search({
+            const pitId = await MyClass.openPIT();
+
+            const myBody = {
                 query: {
                     match_all: {}
                 },
@@ -902,35 +858,36 @@ describe(`BaseModel class`, function() {
                         order: `asc`
                     }
                 }
-            }, void 0, 10000, { scrollId: true });
+            };
+
+            let results = await MyClass.search(myBody, 0, 10000, { pitId: pitId });
             expect(results.length).to.equal(10000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_00000`);
             expect(results[9999]._id).to.equal(`id_09999`);
 
-            let scrollId = results.scrollId;
-            results = await MyClass.search(void 0, void 0, void 0, { scrollId: scrollId });
+            results = await MyClass.search(myBody, void 0, 10000, { pitId: results.pitId, searchAfter: results._lastPosition });
             expect(results.length).to.equal(10000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_10000`);
             expect(results[9999]._id).to.equal(`id_19999`);
 
-            scrollId = results.scrollId;
-            results = await MyClass.search(void 0, void 0, void 0, { scrollId: scrollId });
+            results = await MyClass.search(myBody, void 0, 10000, { pitId: results.pitId, searchAfter: results._lastPosition });
             expect(results.length).to.equal(10000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_20000`);
             expect(results[9999]._id).to.equal(`id_29999`);
 
-            scrollId = results.scrollId;
-            results = await MyClass.search(void 0, void 0, void 0, { scrollId: scrollId });
+            results = await MyClass.search(myBody, void 0, 10000, { pitId: results.pitId, searchAfter: results._lastPosition });
             expect(results.length).to.equal(5000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_30000`);
             expect(results[4999]._id).to.equal(`id_34999`);
+
+            await MyClass.closePIT(results.pitId);
         });
 
-        it(`searches and manually scrolls, takes care about source field`, async () => {
+        it(`searches and manually paginates, takes care about source field`, async () => {
             await bootstrapTest.deleteData();
 
             const MyClass = createClass(`users`).in(`test`);
@@ -954,7 +911,9 @@ describe(`BaseModel class`, function() {
                 refresh: true
             });
 
-            let results = await MyClass.search({
+            const pitId = await MyClass.openPIT();
+
+            const myBody = {
                 query: {
                     match_all: {}
                 },
@@ -963,36 +922,77 @@ describe(`BaseModel class`, function() {
                         order: `asc`
                     }
                 }
-            }, void 0, 10000, { scrollId: true, source: `name` });
+            };
+
+            let results = await MyClass.search(myBody, void 0, 10000, { pitId: pitId, source: `name` });
             expect(results.length).to.equal(10000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_00000`);
             expect(results[9999]._id).to.equal(`id_09999`);
             expect(results[0].constructor._tenant).to.be.undefined;
 
-            let scrollId = results.scrollId;
-            results = await MyClass.search(void 0, void 0, void 0, { scrollId: scrollId });
+            results = await MyClass.search(myBody, void 0, 10000, { pitId: results.pitId, searchAfter: results._lastPosition });
             expect(results.length).to.equal(10000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_10000`);
             expect(results[9999]._id).to.equal(`id_19999`);
             expect(results[0].constructor).not.to.be.undefined;
 
-            scrollId = results.scrollId;
-            results = await MyClass.search(void 0, void 0, void 0, { scrollId: scrollId, source: `name` });
+            results = await MyClass.search(myBody, void 0, 10000, { pitId: results.pitId, searchAfter: results._lastPosition, source: `name` });
             expect(results.length).to.equal(10000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_20000`);
             expect(results[9999]._id).to.equal(`id_29999`);
             expect(results[0].constructor._tenant).to.be.undefined;
 
-            scrollId = results.scrollId;
-            results = await MyClass.search(void 0, void 0, void 0, { scrollId: scrollId });
+            results = await MyClass.search(myBody, void 0, 10000, { pitId: results.pitId, searchAfter: results._lastPosition });
             expect(results.length).to.equal(5000);
-            expect(results.scrollId).not.to.be.undefined;
+            expect(results.pitId).not.to.be.undefined;
             expect(results[0]._id).to.equal(`id_30000`);
             expect(results[4999]._id).to.equal(`id_34999`);
             expect(results[0].constructor).not.to.be.undefined;
+
+            await MyClass.closePIT(results.pitId);
+        });
+
+        it(`searches using implicit PIT with searchAfter specified`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+
+            let result = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, void 0, 1);
+            expect(result.length).to.equal(1);
+
+            result = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, 0, void 0, { searchAfter: result._lastPosition });
+            expect(result.length).to.equal(1);
+
+            result = await MyClass.search({
+                query: {
+                    match_all: {}
+                },
+                sort: {
+                    name: {
+                        order: `asc`
+                    }
+                }
+            }, 0, void 0, { searchAfter: result._lastPosition });
+            expect(result.length).to.equal(0);
         });
     });
 
@@ -1278,6 +1278,45 @@ describe(`BaseModel class`, function() {
             }
             expect(total).to.equal(2);
         });
+
+        it(`iterates using explicitly specified PIT ID`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+
+            const myPIT = await MyClass.openPIT();
+
+            let bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }, size: 1
+            }, { pitId: myPIT });
+
+            let possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            let total = 0;
+            for await (const bulk of bulks) {
+                total++;
+                expect(bulk.length).to.equal(1);
+                expect(possibleValues).to.include(bulk[0].html);
+            }
+            expect(total).to.equal(2);
+
+            //And repeat again with the same PIT
+            bulks = MyClass.bulkIterator({
+                query: {
+                    match_all: {}
+                }, size: 1
+            }, { pitId: myPIT });
+
+            possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
+            total = 0;
+            for await (const bulk of bulks) {
+                total++;
+                expect(bulk.length).to.equal(1);
+                expect(possibleValues).to.include(bulk[0].html);
+            }
+            expect(total).to.equal(2);
+
+            await MyClass.closePIT(myPIT);
+        });
     });
 
     describe(`static *itemIterator()`, () => {
@@ -1538,31 +1577,41 @@ describe(`BaseModel class`, function() {
             }
             expect(total).to.equal(2);
         });
-    });
 
-    describe(`static clearScroll()`, () => {
-        it(`can't clear scroll without specifying scroll id`, async () => {
-            const MyClass = createClass(`users`);
+        it(`iterates using explicitly specified PIT ID`, async () => {
+            const MyClass = createClass(`documents`).in(`test`);
+            const possibleValues = [defaultDocument1.document.html, defaultDocument2.document.html];
 
-            await expect(MyClass.clearScroll()).to.be.eventually.rejectedWith(`scrollId must be specified!`);
-        });
+            const myPIT = await MyClass.openPIT();
 
-        it(`clears scroll`, async () => {
-            const MyClass = createClass(`users`);
-
-            const results = await MyClass.search({
+            let items = MyClass.itemIterator({
                 query: {
                     match_all: {}
-                }
-            }, void 0, void 0, { scrollId: true });
+                },
+                size: 1
+            }, { pitId: myPIT });
+            let total = 0;
+            for await (const item of items) {
+                total++;
+                expect(possibleValues).to.include(item.html);
+            }
+            expect(total).to.equal(2);
 
-            const scrollId = results.scrollId;
-            let result = await MyClass.clearScroll(scrollId);
-            expect(result).to.be.true;
+            //And repeat again with the same PIT
+            items = MyClass.itemIterator({
+                query: {
+                    match_all: {}
+                },
+                size: 1
+            }, { pitId: myPIT });
+            total = 0;
+            for await (const item of items) {
+                total++;
+                expect(possibleValues).to.include(item.html);
+            }
+            expect(total).to.equal(2);
 
-            //can't clear one more time
-            result = await MyClass.clearScroll(scrollId);
-            expect(result).to.be.false;
+            await MyClass.closePIT(myPIT);
         });
     });
 
@@ -2695,7 +2744,7 @@ describe(`BaseModel class`, function() {
             expect(results2._source.documentTitle).to.equal(`:)`);
         });
 
-        it(`updates data instances with custom specified scrollSize parameter`, async () => {
+        it(`updates data instances with custom specified scroll size parameter`, async () => {
             const DocumentClass = createClass(`documents`).in(`test`);
 
             const result = await DocumentClass.updateByQuery({
@@ -2803,7 +2852,7 @@ describe(`BaseModel class`, function() {
             expect(results2).to.be.false;
         });
 
-        it(`deletes data instances with custom specified scrollSize parameter`, async () => {
+        it(`deletes data instances with custom specified scroll size parameter`, async () => {
             const DocumentClass = createClass(`documents`).in(`test`);
 
             const result = await DocumentClass.deleteByQuery({

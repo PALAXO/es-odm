@@ -1068,5 +1068,29 @@ describe(`BulkArray class`, function() {
             expect(esStatus.errors).to.be.true;
             expect(esStatus.items.length).to.equal(1);
         });
+
+        it(`writes and reads objects bigger than a string limit`, async () => {
+            const MAX_STRING_LENGTH = require(`buffer`).constants.MAX_STRING_LENGTH;
+            const copies = 4;
+            let hugeString = ``;
+            for (let i = 0; i < (MAX_STRING_LENGTH / 20) - 10; i++) {
+                hugeString += `1234567890`;
+            }
+
+            const MyClass = createClass(`documents`).in(`test`);
+            const bulkArray = new BulkArray();
+            for (let i = 0; i < copies; i++) {
+                bulkArray.push(new MyClass({
+                    text: hugeString
+                }, `doc-${i}`));
+            }
+            await bulkArray.save();
+
+            const allDocuments = await MyClass.findAll();
+            expect(allDocuments.length).to.equal(copies);
+            for (const myDocument of allDocuments) {
+                expect(myDocument.text).to.equal(hugeString);
+            }
+        });
     });
 });

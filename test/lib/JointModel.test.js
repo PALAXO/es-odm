@@ -1042,6 +1042,102 @@ describe(`JointModel class`, function() {
             }
             expect(total).to.equal(2 * size);
         });
+
+        it(`iterates using explicitly specified PIT ID`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
+
+            const myPIT = await myJoint.openPIT();
+
+            let total = 0;
+            let bulkSize = 10;
+            let bulks = myJoint.bulkIterator({ size: bulkSize }, { pitId: myPIT });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+                expect(bulk.length).to.equal(bulkSize);
+
+                for (const item of bulk) {
+                    if (item.constructor.alias.startsWith(RecordingUsers.alias)) {
+                        expect(item.name.substring(0, 4)).to.equal(`name`);
+                    } else {
+                        expect(item.documentTitle.substring(0, 5)).to.equal(`title`);
+                    }
+                }
+            }
+            expect(total).to.equal(2 * size);
+
+            //And repeat again with the same PIT
+            total = 0;
+            bulkSize = 10;
+            bulks = myJoint.bulkIterator({ size: bulkSize }, { pitId: myPIT });
+            for await (const bulk of bulks) {
+                total += bulk.length;
+                expect(bulk.length).to.equal(bulkSize);
+
+                for (const item of bulk) {
+                    if (item.constructor.alias.startsWith(RecordingUsers.alias)) {
+                        expect(item.name.substring(0, 4)).to.equal(`name`);
+                    } else {
+                        expect(item.documentTitle.substring(0, 5)).to.equal(`title`);
+                    }
+                }
+            }
+            expect(total).to.equal(2 * size);
+
+            await myJoint.closePIT(myPIT);
+        });
     });
 
     describe(`static *itemIterator()`, () => {
@@ -1492,30 +1588,95 @@ describe(`JointModel class`, function() {
             }
             expect(total).to.equal(2 * size);
         });
-    });
 
-    describe(`static clearScroll()`, () => {
-        it(`can't clear scroll without specifying scroll id`, async () => {
+        it(`iterates using explicitly specified PIT ID`, async () => {
+            const size = 50;
+            let bulk;
+
+            const MyUsers = createClass(`users`).in(`test`);
+            await MyUsers.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyUsers.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    name: `name_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
+            const MyDocuments = createClass(`documents`).in(`test`);
+            await MyDocuments.deleteByQuery({
+                query: {
+                    match_all: {}
+                }
+            });
+            bulk = [];
+            for (let i = 0; i < size; i++) {
+                bulk.push({
+                    index: {
+                        _index: MyDocuments.alias,
+                        _id: `id_${i}`
+                    }
+                });
+                bulk.push({
+                    documentTitle: `title_${i}`
+                });
+            }
+            await bootstrapTest.client.bulk({
+                operations: bulk,
+                refresh: true
+            });
+
             const myJoint = new JointModel();
+            const RecordingUsers = myJoint.recordSearch(MyUsers);
+            await RecordingUsers.search();
+            const RecordingDocuments = myJoint.recordSearch(MyDocuments);
+            await RecordingDocuments.search();
 
-            await expect(myJoint.clearScroll()).to.be.eventually.rejectedWith(`scrollId must be specified!`);
-        });
+            const myPIT = await myJoint.openPIT();
 
-        it(`clears scroll`, async () => {
-            createClass(`users`);
-            const myJoint = new JointModel();
-            const RecordingClass = myJoint.recordSearch(createClass(`users`).in(`test`));
+            let total = 0;
+            let bulkSize = 10;
+            let items = myJoint.itemIterator({ size: bulkSize }, { pitId: myPIT });
+            for await (const item of items) {
+                total++;
 
-            await RecordingClass.search();
-            const results = await myJoint.search(void 0, void 0, void 0, { scrollId: true });
+                if (item.constructor.alias.startsWith(RecordingUsers.alias)) {
+                    expect(item.name.substring(0, 4)).to.equal(`name`);
+                } else {
+                    expect(item.documentTitle.substring(0, 5)).to.equal(`title`);
+                }
+            }
+            expect(total).to.equal(2 * size);
 
-            const scrollId = results.scrollId;
-            let result = await myJoint.clearScroll(scrollId);
-            expect(result).to.be.true;
+            //And repeat again with the same PIT
+            total = 0;
+            bulkSize = 10;
+            items = myJoint.itemIterator({ size: bulkSize }, { pitId: myPIT });
+            for await (const item of items) {
+                total++;
 
-            //can't clear one more time
-            result = await myJoint.clearScroll(scrollId);
-            expect(result).to.be.false;
+                if (item.constructor.alias.startsWith(RecordingUsers.alias)) {
+                    expect(item.name.substring(0, 4)).to.equal(`name`);
+                } else {
+                    expect(item.documentTitle.substring(0, 5)).to.equal(`title`);
+                }
+            }
+            expect(total).to.equal(2 * size);
+
+            await myJoint.closePIT(myPIT);
         });
     });
 

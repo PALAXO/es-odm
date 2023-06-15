@@ -44,9 +44,6 @@ export class SearchArray<T> extends Array<T> {
     /** ES "pit_id", if applicable */
     pitId?: string;
 
-    /** ES "_scroll_id", if applicable */
-    scrollId?: string;
-
     /** ES "sort" value of the last item, if applicable */
     _lastPosition?: Array<any>;
 }

@@ -8,9 +8,7 @@ class Elasticsearch {
     updateByQuery(index, body, scrollSize, waitForCompletion? = true, refresh? = true): Promise<any>;
     delete(index, id, primary_term? = void 0, seq_no? = void 0, refresh? = true): Promise<any>;
     deleteByQuery(index, body, scrollSize, waitForCompletion? = true, refresh? = true): Promise<any>;
-    search(index, body, from, size, source? = void 0, trackTotalHits? = true, scroll? = false, searchAfter? = void 0, pointInTime? = void 0, refresh? = void 0): Promise<any>;
-    scroll(scrollId, refresh? = 10): Promise<any>;
-    clearScroll(scrollId): Promise<any>;
+    search(index, body, from, size, source? = void 0, trackTotalHits? = true, searchAfter? = void 0, pointInTime? = void 0, refresh? = void 0): Promise<any>;
     mget(index, ids, source? = true): Promise<any>;
     exists(index, id): Promise<any>;
     count(index, body? = void 0): Promise<any>;
@@ -34,9 +32,10 @@ class Elasticsearch {
 }
 
 export interface elasticsearchAdditional {
-    scrollTimeoutSeconds?: number,
     pitTimeoutSeconds?: number,
-    requestTimeoutSeconds?: number
+    requestTimeoutSeconds?: number,
+    pingTimeoutSeconds?: number,
+    maxRetries?: number
 }
 
 function setClient(node: string | string[] | NodeOptions | NodeOptions[], additional: elasticsearchAdditional = void 0): void;
