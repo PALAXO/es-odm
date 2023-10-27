@@ -1,4 +1,8 @@
 {
+  "warning": {
+    "downloadedB": 0,
+    "searchCalls": 0
+  },
   "joi": {
     "validatorConfig": {
       "abortEarly": false,
@@ -28,7 +32,7 @@
     "name": "elasticsearch",
     "streams": [
       {
-        "level": "info",
+        "level": "warn",
         "type": "console"
       }
     ]
