@@ -9,7 +9,7 @@ function setLoggerConfig(config: {} = void 0): void;
  * Changes UID function
  * @param newUidFunction {Function}
  */
-function setLoggerUidFunction(newUidFunction: () => string): void;
+function setLoggerUidFunction(newUidFunction: () => string | Record<string, any>): void;
 
 /**
  * Trace level logging
