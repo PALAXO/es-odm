@@ -366,9 +366,10 @@ export default class BaseModel {
     /**
      * Clones index into a new one. Preserves number of replicas. Input index has to be manually blocked for write (be made read-only).
      * @param settings - Optional settings to use for the new index
+     * @param targetIndex - Optional target index
      * @returns New index
      */
-    static cloneIndex(settings?: Record<string, any> = void 0): Promise<string>;
+    static cloneIndex(settings?: Record<string, any> = void 0, targetIndex?: string = undefined): Promise<string>;
 
     /**
      * Refreshed index.
@@ -501,6 +502,12 @@ export default class BaseModel {
      * @returns
      */
     static _getBulkSize(): Promise<number>;
+
+    /**
+     * Generates new index string, doesn't create any index in ES
+     * @returns
+     */
+    static _generateIndex(): string;
 }
 
 export {};

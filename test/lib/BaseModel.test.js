@@ -3596,6 +3596,24 @@ describe(`BaseModel class`, function() {
             await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`index test_test must be read-only to resize index. use "index.blocks.write=true"`);
         });
 
+        it(`can't clone to index with wildcard`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test`
+            });
+
+            const MyTest = createClass(`test`).in(`test`);
+            await MyTest.putSettings({
+                index: {
+                    blocks: {
+                        write: true
+                    }
+                }
+            });
+
+
+            await expect(MyTest.cloneIndex(void 0, `*_2test`)).to.be.eventually.rejectedWith(`Specified target index '*_2test' is not valid!`);
+        });
+
         it(`clones aliased model`, async () => {
             const MyTest = createClass(`users`).in(`test`);
             const originalIndex = await MyTest.getIndex();
@@ -3682,6 +3700,74 @@ describe(`BaseModel class`, function() {
             expect(results[0].status).to.equal(`:)`);
         });
 
+        it(`clones model to custom specified index`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test`,
+                settings: {
+                    index: {
+                        refresh_interval: -1
+                    }
+                }
+            });
+
+            const MyTest = createClass(`test`).in(`test`);
+            const originalIndex = await MyTest.getIndex();
+
+            const instance = new MyTest({ status: `:)` }, `test`);
+            await instance.save();
+            await MyTest.putSettings({
+                index: {
+                    blocks: {
+                        write: true
+                    }
+                }
+            });
+
+            const targetIndex = `test_2test-xyz`;
+            const newIndex = await MyTest.cloneIndex(void 0, targetIndex);
+            expect(originalIndex).to.not.equal(newIndex);
+            expect(targetIndex).to.equal(newIndex);
+
+            let indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(1);
+            let existingIndices = Object.keys(indicesStats.indices);
+            expect(existingIndices).includes(originalIndex);
+
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_2test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(1);
+            existingIndices = Object.keys(indicesStats.indices);
+            expect(existingIndices).includes(newIndex);
+
+            await MyTest.deleteIndex();
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(0);
+
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_2test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(1);
+            existingIndices = Object.keys(indicesStats.indices);
+            expect(existingIndices).includes(newIndex);
+
+            const My2Test = createClass(`2test`).in(`test`);
+            await My2Test.aliasIndex(newIndex);
+            const results = await My2Test.findAll();
+            expect(results.length).to.equal(1);
+            expect(results[0].constructor.alias).to.equal(My2Test.alias);
+            expect(results[0]._id).to.equal(`test`);
+            expect(results[0].status).to.equal(`:)`);
+        });
+
         it(`clones model and specifies settings`, async () => {
             await bootstrapTest.client.indices.create({
                 index: `test_test`,
@@ -3735,6 +3821,86 @@ describe(`BaseModel class`, function() {
             expect(results[0].status).to.equal(`:)`);
 
             const newSettings = await MyTest.getSettings();
+            expect(Object.values(newSettings)[0].settings.index.number_of_replicas).to.equal(`2`);
+            expect(Object.values(newSettings)[0].settings.index.refresh_interval).to.equal(`5s`);
+        });
+
+        it(`clones model to custom specified index and specifies settings`, async () => {
+            await bootstrapTest.client.indices.create({
+                index: `test_test`,
+                settings: {
+                    index: {
+                        refresh_interval: -1
+                    }
+                }
+            });
+
+            const MyTest = createClass(`test`).in(`test`);
+            const originalIndex = await MyTest.getIndex();
+
+            const instance = new MyTest({ status: `:)` }, `test`);
+            await instance.save();
+            await MyTest.putSettings({
+                index: {
+                    blocks: {
+                        write: true
+                    }
+                }
+            });
+
+            const targetIndex = `test_2test-xyz`;
+            const newIndex = await MyTest.cloneIndex({
+                index: {
+                    number_of_replicas: 2,
+                    refresh_interval: `5s`
+                }
+            }, targetIndex);
+            expect(originalIndex).to.not.equal(newIndex);
+            expect(targetIndex).to.equal(newIndex);
+
+            let indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(1);
+            let existingIndices = Object.keys(indicesStats.indices);
+            expect(existingIndices).includes(originalIndex);
+
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_2test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(1);
+            existingIndices = Object.keys(indicesStats.indices);
+            expect(existingIndices).includes(newIndex);
+
+            const oldSettings = await MyTest.getSettings();
+            expect(Object.values(oldSettings)[0].settings.index.refresh_interval).to.equal(`-1`);
+
+            await MyTest.deleteIndex();
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(0);
+
+            indicesStats = await bootstrapTest.client.indices.stats({
+                index: `test_2test*`
+            });
+            expect(indicesStats.indices).to.be.an(`object`);
+            expect(Object.values(indicesStats.indices).length).to.equal(1);
+            existingIndices = Object.keys(indicesStats.indices);
+            expect(existingIndices).includes(newIndex);
+
+            const My2Test = createClass(`2test`).in(`test`);
+            await My2Test.aliasIndex(newIndex);
+            const results = await My2Test.findAll();
+            expect(results.length).to.equal(1);
+            expect(results[0].constructor.alias).to.equal(My2Test.alias);
+            expect(results[0]._id).to.equal(`test`);
+            expect(results[0].status).to.equal(`:)`);
+
+            const newSettings = await My2Test.getSettings();
             expect(Object.values(newSettings)[0].settings.index.number_of_replicas).to.equal(`2`);
             expect(Object.values(newSettings)[0].settings.index.refresh_interval).to.equal(`5s`);
         });
@@ -3813,6 +3979,14 @@ describe(`BaseModel class`, function() {
             try {
                 await bootstrapTest.client.indices.delete({
                     index: `test_test*`
+                });
+            } catch (e) {
+                //OK
+            }
+
+            try {
+                await bootstrapTest.client.indices.delete({
+                    index: `test_2test*`
                 });
             } catch (e) {
                 //OK
@@ -4690,6 +4864,28 @@ describe(`BaseModel class`, function() {
             const MyClass = createClass(`users`).in(`test`);
             const bulkSize = await MyClass._getBulkSize();
             expect(bulkSize).to.be.a(`number`);
+        });
+    });
+
+    describe(`_generateIndex()`, () => {
+        it(`cannot generate index when not fully specified`, async () => {
+            const MyClass = createClass(`*`).in(`test`);
+
+            expect(() => MyClass._generateIndex()).to.throw(`You cannot use '_generateIndex' with current base name '*', full alias is 'test_*'!`);
+        });
+
+        it(`generates new index`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const newIndex = MyClass._generateIndex();
+
+            const parts = newIndex.split(`_`);
+            expect(parts.length).to.equal(2);
+            expect(parts[0]).to.equal(`test`);
+
+            const nameParts = parts[1].split(`-`);
+            expect(nameParts.length).to.equal(2);
+            expect(nameParts[0]).to.equal(`users`);
+            expect(nameParts[1].length).to.greaterThan(0);
         });
     });
 
