@@ -1,4 +1,4 @@
-import { Client, NodeOptions } from "@elastic/elasticsearch/lib/client";
+import { Client, ClientOptions, NodeOptions } from "@elastic/elasticsearch/lib/client";
 import { errors } from "@elastic/elasticsearch";
 
 class Elasticsearch {
@@ -38,7 +38,7 @@ export interface elasticsearchAdditional {
     maxRetries?: number
 }
 
-function setClient(node: string | string[] | NodeOptions | NodeOptions[], additional: elasticsearchAdditional = void 0): void;
+function setClient(node: ClientOptions | string | string[] | NodeOptions[], additional: elasticsearchAdditional = void 0): void;
 type esClient = typeof Elasticsearch;
 
 export {
