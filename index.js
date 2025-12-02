@@ -1,15 +1,13 @@
-'use strict';
+import Joi from 'joi';
+import _ from 'lodash';
 
-const Joi = require(`@hapi/joi`);
-const _ = require(`lodash`);
-
-const BaseModel = require(`./lib/BaseModel`);
-const JointModel = require(`./lib/JointModel`);
-const BulkArray = require(`./lib/BulkArray`);
-const { esClient, setClient, esErrors } = require(`./lib/elasticsearch`);
-const { setLoggerConfig, setLoggerUidFunction } = require(`./lib/logger`);
-const nconf = require(`./lib/config/config`);
-const utils = require(`./lib/utils`);
+import BaseModel from './lib/BaseModel.js';
+import JointModel from './lib/JointModel.js';
+import BulkArray from './lib/BulkArray.js';
+import { esClient, setClient, esErrors } from './lib/elasticsearch.js';
+import logger from './lib/logger.js';
+import nconf from './lib/config/config.js';
+import utils from './lib/utils.js';
 
 /**
  * This is needed due to possible bug is JSDoc parser...
@@ -55,10 +53,11 @@ function setConfiguration(configuration) {
     }
 }
 
-module.exports = {
+export {
     createClass,
     BaseModel, BulkArray, JointModel,
     esClient, setClient, esErrors,
-    setLoggerConfig, setLoggerUidFunction,
     setConfiguration
 };
+export const setLoggerConfig = logger.setLoggerConfig;
+export const setLoggerUidFunction = logger.setLoggerUidFunction;

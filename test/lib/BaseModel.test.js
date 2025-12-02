@@ -1,8 +1,6 @@
-'use strict';
-
-const Joi = require(`@hapi/joi`);
-const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, BulkArray, BaseModel } = require(`../../index`);
+import Joi from 'joi';
+import bootstrapTest from '../bootstrapTests.js';
+import { createClass, BulkArray, BaseModel } from '../../index.js';
 
 describe(`BaseModel class`, function() {
     this.timeout(testTimeout);
@@ -3500,7 +3498,7 @@ describe(`BaseModel class`, function() {
             const MyDocumentsSource = createClass(`incorrect`).in(`test`);
             const MyRevisionsDestination = createClass(`revisions`).in(`test`);
 
-            await expect(MyDocumentsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_incorrect]`);
+            await expect(MyDocumentsSource.reindex(MyRevisionsDestination)).to.be.eventually.rejectedWith(`index_not_found_exception`);
         });
 
         it(`reindexes model`, async () => {
@@ -3583,7 +3581,7 @@ describe(`BaseModel class`, function() {
         it(`can't clone not existing index`, async () => {
             const MyTest = createClass(`test`).in(`test`);
 
-            await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+            await expect(MyTest.cloneIndex()).to.be.eventually.rejectedWith(`index_not_found_exception`);
         });
 
         it(`can't clone when index is not read-only`, async () => {
@@ -3997,7 +3995,7 @@ describe(`BaseModel class`, function() {
     describe(`static refresh()`, () => {
         it(`can't refresh not existing index`, async () => {
             const Test = createClass(`test`).in(`test`);
-            await expect(Test.refresh()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+            await expect(Test.refresh()).to.be.eventually.rejectedWith(`index_not_found_exception`);
         });
 
         it(`refreshes single index`, async () => {
@@ -4046,7 +4044,7 @@ describe(`BaseModel class`, function() {
     describe(`static openPIT()`, () => {
         it(`can't open PIT with not existing index`, async () => {
             const Test = createClass(`test`).in(`test`);
-            await expect(Test.openPIT()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+            await expect(Test.openPIT()).to.be.eventually.rejectedWith(`index_not_found_exception`);
         });
 
         it(`searches using PIT over single index`, async () => {

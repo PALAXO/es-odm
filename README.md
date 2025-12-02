@@ -1,4 +1,4 @@
-# ElasticSearch 8 Node.js ODM library
+# ElasticSearch 9 Node.js ODM library
 
 ## Basic information
  
@@ -41,7 +41,7 @@
    - Newly created indices will always be created as aliases with underlying indices
 
 #### Usage
- - `const { createClass, BulkArray, BaseModel, JointModel, esClient, setClient, esErrors, setLoggerConfig, setLoggerUidFunction } = require('odm');`
+ - `import { createClass, BulkArray, BaseModel, JointModel, esClient, setClient, esErrors, setLoggerConfig, setLoggerUidFunction, setConfiguration } from 'es-odm';`
  - `createClass` function creates new class
    - Each class contains several properties
      - `schema`, `alias`, `_tenant`, `_name` and `_immediateRefresh`
@@ -70,6 +70,7 @@
  - `esErrors` - Errors from underlying ES library
  - `setLoggerConfig` - Replaces default logger configuration
  - `setLoggerUidFunction` - Pass custom function to be used to generate ID, which is passed to generated logs
+ - `setConfiguration` - Pass some additional configuration
 
 
 #### Class usage
@@ -390,4 +391,3 @@
 - `static async _getBulkSize()`
     - Returns optimal size of bulk for given model
     - Used in `search` function for pagination
- 

@@ -1,8 +1,6 @@
-'use strict';
-
-const Joi = require(`@hapi/joi`);
-const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, JointModel, BulkArray } = require(`../../index`);
+import Joi from 'joi';
+import bootstrapTest from '../bootstrapTests.js';
+import { createClass, JointModel, BulkArray } from '../../index.js';
 
 describe(`JointModel class`, function() {
     this.timeout(testTimeout);
@@ -1773,7 +1771,7 @@ describe(`JointModel class`, function() {
             const jointModel = new JointModel();
 
             jointModel.recordSearch(createClass(`test`).in(`test`));
-            await expect(jointModel.openPIT()).to.be.eventually.rejectedWith(`index_not_found_exception: [index_not_found_exception] Reason: no such index [test_test]`);
+            await expect(jointModel.openPIT()).to.be.eventually.rejectedWith(`index_not_found_exception`);
         });
 
         it(`searches using PIT over multiple indices`, async () => {

@@ -1,11 +1,9 @@
-'use strict';
+import * as chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+import path from 'path';
+import { Client } from '@elastic/elasticsearch';
 
-const chai = require(`chai`);
-const chaiAsPromised = require(`chai-as-promised`);
-const path = require(`path`);
-const { Client } = require(`@elastic/elasticsearch`);
-
-const nconf = require(`../lib/config/config`);
+import nconf from '../lib/config/config.js';
 const ES_URL = nconf.get(`es:url`);
 
 
@@ -19,12 +17,11 @@ chai.use(chaiAsPromised);
  */
 nconf.env();
 nconf.argv();
-nconf.file(`odm_test`, path.join(__dirname, `test_config.json`));
+nconf.file(`odm_test`, path.join(import.meta.dirname, `test_config.json`));
 
 /*
  * Globals
  */
-global.chai = chai;
 global.expect = chai.expect;
 global.testTimeout = nconf.get(`test:settings:timeout`);
 
@@ -36,7 +33,8 @@ const client = new Client({ node: ES_URL });
 /*
  * Module exports
  */
-module.exports = {
+// eslint-disable-next-line mocha/no-exports
+export default {
     //modules
     client,
 

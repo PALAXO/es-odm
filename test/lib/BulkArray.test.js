@@ -1,8 +1,8 @@
-'use strict';
-
-const Joi = require(`@hapi/joi`);
-const bootstrapTest = require(`../bootstrapTests`);
-const { createClass, BulkArray } = require(`../../index`);
+import Joi from 'joi';
+import bootstrapTest from '../bootstrapTests.js';
+import { createClass, BulkArray } from '../../index.js';
+import buffer from 'buffer';
+const MAX_STRING_LENGTH = buffer.constants.MAX_STRING_LENGTH;
 
 describe(`BulkArray class`, function() {
     this.timeout(testTimeout);
@@ -1070,10 +1070,9 @@ describe(`BulkArray class`, function() {
         });
 
         it(`writes and reads objects bigger than a string limit`, async () => {
-            const MAX_STRING_LENGTH = require(`buffer`).constants.MAX_STRING_LENGTH;
-            const copies = 4;
+            const copies = 8;
             let hugeString = ``;
-            for (let i = 0; i < (MAX_STRING_LENGTH / 20) - 10; i++) {
+            for (let i = 0; i < (MAX_STRING_LENGTH / (10 * 4)); i++) {
                 hugeString += `1234567890`;
             }
 
