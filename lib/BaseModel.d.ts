@@ -161,6 +161,12 @@ export default class BaseModel {
     static get alias(): string;
 
     /**
+     * Unique constructor identifier
+     * @returns
+     */
+    static get __constructorIdentifier(): string;
+
+    /**
      * Runs search function with all recorded queries. Supports searchAfter and Point in Time.
      * @param body - Body object
      * @param from - Start entry; cannot be used in case of explicit PIT or when searchAfter is specified
