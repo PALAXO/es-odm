@@ -144,6 +144,22 @@
      
    - `async reload()`
      - Reloads all instances in bulk array
+
+   - `reject(item, ?statusCodeOrError, ?message, ?type)`
+     - Rejects item and marks it as failed in BulkArray status
+     - `statusCodeOrError` - Can be status code (number), Error object or rejection object
+     - `message` - Optional rejection message (overwrites message from Error/object)
+     - `type` - Optional rejection type/code (overwrites type from Error/object)
+     - Call `clear()` to remove rejected items from array
+
+   - `finish(item, ?statusCode, ?message)`
+     - Marks item as successfully processed
+     - `statusCode` - Can be status code (number) or success message (string)
+     - `message` - Optional success message
+     - Call `clear()` to remove finished items from array
+
+   - `clear()`
+     - Removes rejected and finished elements from the array
          
 #### Examples:
   ```

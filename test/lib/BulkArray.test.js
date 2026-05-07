@@ -934,6 +934,125 @@ describe(`BulkArray class`, function() {
         });
     });
 
+    describe(`BulkArray item processing`, function() {
+        it(`finishes with custom message instead of status code`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            bulk.finish(item, `Operation successful`);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(200);
+            expect(status.message).to.equal(`Operation successful`);
+        });
+
+        it(`finishes with statusCode and message`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            bulk.finish(item, 201, `Created`);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(201);
+            expect(status.message).to.equal(`Created`);
+        });
+
+        it(`rejects with statusCode, message and type`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            bulk.reject(item, 403, `Forbidden access`, `AUTH:FORBIDDEN`);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(403);
+            expect(status.message).to.equal(`Forbidden access`);
+            expect(status.type).to.equal(`AUTH:FORBIDDEN`);
+        });
+
+        it(`rejects with Error object`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            const error = new Error(`Something went wrong`);
+            error.status = 503;
+            error.type = `SYSTEM:ERROR`;
+
+            bulk.reject(item, error);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(503);
+            expect(status.message).to.equal(`Something went wrong`);
+            expect(status.type).to.equal(`SYSTEM:ERROR`);
+        });
+
+        it(`rejects with Error object (fallback to message)`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            const error = new Error(`Simple error`);
+
+            bulk.reject(item, error);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(400);
+            expect(status.message).to.equal(`Simple error`);
+            expect(status.type).to.equal(`RESOURCE:INVALID_OPERATION`);
+        });
+
+        it(`rejects with custom object`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            const rejectObj = {
+                statusCode: 418,
+                message: `I'm a teapot`,
+                code: `BREW:ERROR`
+            };
+
+            bulk.reject(item, rejectObj);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(418);
+            expect(status.message).to.equal(`I'm a teapot`);
+            expect(status.type).to.equal(`BREW:ERROR`);
+        });
+
+        it(`rejects with string message`, () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test` });
+            const bulk = new BulkArray(item);
+
+            bulk.reject(item, `Direct message`);
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(400);
+            expect(status.message).to.equal(`Direct message`);
+            expect(status.type).to.equal(`RESOURCE:INVALID_OPERATION`);
+        });
+
+
+        it(`automatically type assignment in setItem (mocking ES failure)`, async () => {
+            const MyClass = createClass(`users`).in(`test`);
+            const item = new MyClass({ name: `test`, status: `active` });
+            const bulk = new BulkArray(item);
+
+            //Trigger ES mapping error by sending object to keyword field
+            item.status = { some: `object` };
+
+            await bulk.save();
+
+            const status = bulk.status[item.__uuid];
+            expect(status.status).to.equal(400);
+            expect(status.type).to.equal(`DATABASE:OPERATION_FAILED`);
+        });
+    });
+
     describe(`functional tests`, () => {
         it(`Bulk status test`, async () => {
             const MyClass = createClass(`users`).in(`test`);

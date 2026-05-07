@@ -11,6 +11,8 @@ export interface BulkArrayStatusItemExternal {
     status: number,
     /** Document logged message */
     message: string,
+    /** Document error type */
+    type: string,
     /** Document payload */
     payload: Object
 }
@@ -101,15 +103,16 @@ export default class BulkArray<T extends BaseModel = BaseModel> extends SearchAr
      * @param id
      * @param alias
      */
-    notFound(id:String, alias?: string = void 0): void;
+    notFound(id: string, alias?: string = void 0): void;
 
     /**
      * Rejects item. Call clear() to remove it from array.
      * @param item - Item bo be rejected.
-     * @param statusCode - Status code of rejection
+     * @param statusCodeOrError - Status code OR Error OR object of rejection
      * @param message - Message of rejection
+     * @param type - Type of rejection
      */
-    reject(item: T, statusCode?: number = 400, message?: string = void 0): void;
+    reject(item: T, statusCodeOrError?: number | Error | Object = 400, message?: string = void 0, type?: string = void 0): void;
 
     /**
      * Rejects all documents with current status code >= 400
@@ -122,7 +125,7 @@ export default class BulkArray<T extends BaseModel = BaseModel> extends SearchAr
      * @param statusCode - Status code
      * @param message - Message
      */
-    finish(item: T, statusCode?: number = 200, message?: string = void 0): void;
+    finish(item: T, statusCode?: number | string = 200, message?: string = void 0): void;
 
     /**
      * Returns payload object of item.
