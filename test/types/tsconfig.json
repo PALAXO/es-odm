@@ -1,0 +1,15 @@
+{
+    "//": "Type level test of the public API - 'npm run types' compiles it, nothing is ever emitted or executed.",
+    "compilerOptions": {
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "target": "es2022",
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "types": []
+    },
+    "include": [
+        "publicApi.ts"
+    ]
+}

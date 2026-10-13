@@ -6,6 +6,9 @@ import { Client } from '@elastic/elasticsearch';
 import nconf from '../lib/config/config.js';
 const ES_URL = nconf.get(`es:url`);
 
+//Every index the suite works with lives here - the suite must never touch anything else in the cluster
+const TEST_NAMESPACE = `odmtest*`;
+
 
 /*
  * Chai bootstrap
@@ -40,39 +43,82 @@ export default {
 
     createIndex,
     deleteIndex,
+    resetFixtureIndices,
 
     deleteData,
+    captureStdout,
 
     //configuration
-    nconf
+    nconf,
+    TEST_NAMESPACE
 };
+
+/**
+ * Runs given function with a captured "process.stdout.write", returns the parsed logger records
+ * @param myFunction {function} Function to run
+ * @returns {Promise<Array<Object>>} Logger records written to stdout
+ */
+async function captureStdout(myFunction) {
+    const records = [];
+    const originalWrite = process.stdout.write;
+
+    process.stdout.write = (chunk) => {
+        records.push(chunk);
+        return true;
+    };
+
+    try {
+        await myFunction();
+    } finally {
+        process.stdout.write = originalWrite;
+    }
+
+    return records.map((record) => {
+        try {
+            return JSON.parse(record);
+        } catch (e) {
+            //A stray non JSON write would otherwise surface as a confusing SyntaxError far from its cause
+            throw Error(`Captured stdout write is not a logger record: '${record}'.`, { cause: e });
+        }
+    });
+}
 
 /**
  * Unmocks all
  */
 async function deleteData() {
+    //Refresh indices first - "deleteByQuery" sees only refreshed documents, and an unrefreshed write left behind by a failed
+    //test would otherwise survive the cleanup or make it fail on a version conflict
+    try {
+        await client.indices.refresh({
+            index: TEST_NAMESPACE
+        });
+    } catch (e) {
+        rethrowUnlessMissing(e);
+    }
+
     //Clean ES
     try {
         await client.deleteByQuery({
-            index: `*`,
+            index: TEST_NAMESPACE,
             query: {
                 match_all: {}
             },
             refresh: true
         });
     } catch (e) {
-        //not found exception
-        //it's OK
+        rethrowUnlessMissing(e);
     }
+}
 
-    //Refresh indices
-    try {
-        await client.indices.refresh({
-            index: `*`
-        });
-    } catch (e) {
-        //not found exception
-        //it's OK
+/**
+ * Swallows a "not found" error of the cleanup, rethrows anything else - a silently failed cleanup
+ * would let every following test run against stale data
+ * @param e {Error} Error thrown by the cleanup
+ */
+function rethrowUnlessMissing(e) {
+    if (e?.meta?.statusCode !== 404) {
+        throw e;
     }
 }
 
@@ -116,12 +162,22 @@ async function deleteIndex(alias, uuid) {
 before(async function() {
     this.timeout(testTimeout);
 
+    //Only the suite namespace - the rest of the cluster may hold data of other projects
+    await resetFixtureIndices();
+});
+
+/**
+ * Drops the whole test namespace and recreates the fixture indices of the bootstrap
+ * @returns {Promise<void>}
+ */
+async function resetFixtureIndices() {
     await client.indices.delete({
-        index: `*`
+        index: TEST_NAMESPACE,
+        ignore_unavailable: true
     });
 
     await client.indices.create({
-        index: `test_users-abc123`,
+        index: `odmtest_users-abc123`,
         settings: {
             index: {
                 refresh_interval: -1
@@ -143,7 +199,7 @@ before(async function() {
         }
     });
     await client.indices.create({
-        index: `test_documents-abc123`,
+        index: `odmtest_documents-abc123`,
         settings: {
             index: {
                 refresh_interval: -1
@@ -166,21 +222,23 @@ before(async function() {
     });
 
     await client.indices.putAlias({
-        index: `test_users-abc123`,
-        name: `test_users`,
+        index: `odmtest_users-abc123`,
+        name: `odmtest_users`,
         is_write_index: true
     });
     await client.indices.putAlias({
-        index: `test_documents-abc123`,
-        name: `test_documents`,
+        index: `odmtest_documents-abc123`,
+        name: `odmtest_documents`,
         is_write_index: true
     });
-});
+}
 
 /**
  * Resources global beforeEach
  */
 beforeEach(async function () {
+    this.timeout(testTimeout);
+
     //Unmock all
     await Promise.all([
         deleteData()
@@ -191,6 +249,8 @@ beforeEach(async function () {
  * Resources global after
  */
 after(async function () {
+    this.timeout(testTimeout);
+
     //Unmock all
     await Promise.all([
         deleteData()

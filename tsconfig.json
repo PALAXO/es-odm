@@ -1,0 +1,21 @@
+{
+    "//outDir": "scripts/types.js overrides outDir - a direct tsc run must never write into types/, it would skip the defined-property declarations",
+    "//": "Type declarations only - the library itself stays plain JS and has no build step. Run 'npm run types' after any public signature change.",
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "target": "es2022",
+        "strict": false,
+        "skipLibCheck": true,
+        "outDir": "node_modules/.cache/es-odm-types-direct",
+        "rootDir": "."
+    },
+    "include": [
+        "index.js",
+        "lib/**/*.js"
+    ]
+}

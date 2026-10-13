@@ -1,0 +1,2 @@
+# Keep every text file LF in the repository, checked out with the platform line endings
+* text=auto

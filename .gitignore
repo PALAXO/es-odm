@@ -5,5 +5,7 @@
 node_modules/
 temp/
 
-.nyc_output/
 coverage/
+
+# Claude Code - personal local instructions
+CLAUDE.local.md

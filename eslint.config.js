@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import promise from 'eslint-plugin-promise';
 import jsdoc from 'eslint-plugin-jsdoc';
 import mochaPlugin from 'eslint-plugin-mocha';
-import stylisticJs from '@stylistic/eslint-plugin-js';
+import stylistic from '@stylistic/eslint-plugin';
 import globals from 'globals';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +18,7 @@ const compat = new FlatCompat({
 });
 
 export default defineConfig([
-    globalIgnores([`*.ts`]),
+    globalIgnores([`*.ts`, `coverage/`]),
     mochaPlugin.configs.recommended,
     {
         extends: compat.extends(`eslint:recommended`, `plugin:promise/recommended`),
@@ -26,7 +26,7 @@ export default defineConfig([
         plugins: {
             promise,
             jsdoc,
-            '@stylistic/js': stylisticJs,
+            '@stylistic': stylistic,
             mocha: mochaPlugin
         },
 
@@ -42,15 +42,15 @@ export default defineConfig([
         },
 
         rules: {
-            '@stylistic/js/indent': [`error`, 4, {
+            '@stylistic/indent': [`error`, 4, {
                 SwitchCase: 1,
             }],
-            '@stylistic/js/object-curly-spacing': [`error`, `always`],
-            '@stylistic/js/quotes': [`error`, `backtick`],
-            '@stylistic/js/semi': [`error`, `always`],
+            '@stylistic/object-curly-spacing': [`error`, `always`],
+            '@stylistic/quotes': [`error`, `backtick`],
+            '@stylistic/semi': [`error`, `always`],
             'no-var': [`error`],
             eqeqeq: [`error`],
-            '@stylistic/js/arrow-parens': [`error`, `always`],
+            '@stylistic/arrow-parens': [`error`, `always`],
             'no-async-promise-executor': [`off`],
             'no-prototype-builtins': [`off`],
             'no-unused-vars': [`error`, {
